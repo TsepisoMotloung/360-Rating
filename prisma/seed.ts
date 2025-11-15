@@ -43,6 +43,14 @@ async function main() {
 
   console.log('✅ Sample rating period created:', period.periodName);
 
+  // Check if users exist
+  const userCount = await prisma.user.count();
+  console.log(`📊 Found ${userCount} users in tblUser`);
+
+  if (userCount === 0) {
+    console.log('⚠️  Warning: No users found in tblUser. Please ensure your existing user data is migrated.');
+  }
+
   console.log('🎉 Database seeding completed!');
 }
 
