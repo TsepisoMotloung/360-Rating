@@ -1,8 +1,8 @@
-import { getConnection, sql } from './db';
+import prisma from './db';
 
 export interface UserValidation {
   isValid: boolean;
-  userId?: string;
+  userId?: number;
   email?: string;
   isAdmin?: boolean;
 }
@@ -18,29 +18,33 @@ export async function validateUser(
   }
 
   try {
-    const pool = await getConnection();
+    const userId = parseInt(uid);
     
-    // Query tblUser - Username contains the email
-    const result = await pool
-      .request()
-      .input('uid', sql.Int, parseInt(uid))
-      .input('email', sql.NVarChar, email)
-      .query(`
-        SELECT UserID, Username 
-        FROM tblUser 
-        WHERE UserID = @uid AND Username = @email
-      `);
-
-    if (result.recordset.length === 0) {
+    if (isNaN(userId)) {
       return { isValid: false };
     }
 
-    const user = result.recordset[0];
+    // Query tblUser using Prisma - Username contains the email
+    const user = await prisma.user.findFirst({
+      where: {
+        id: userId,
+        username: email,
+      },
+      select: {
+        id: true,
+        username: true,
+      },
+    });
+
+    if (!user) {
+      return { isValid: false };
+    }
+
     return {
       isValid: true,
-      userId: user.UserID.toString(),
-      email: user.Username,
-      isAdmin: user.Username.toLowerCase() === ADMIN_EMAIL.toLowerCase(),
+      userId: user.id,
+      email: user.username,
+      isAdmin: user.username.toLowerCase() === ADMIN_EMAIL.toLowerCase(),
     };
   } catch (error) {
     console.error('User validation error:', error);

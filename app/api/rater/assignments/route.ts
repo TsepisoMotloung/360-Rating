@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getConnection, sql } from '@/lib/db';
+import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
@@ -17,17 +17,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const pool = await getConnection();
-
     // Get active rating period
-    const periodResult = await pool.request().query(`
-      SELECT TOP 1 RatingPeriodID, PeriodName
-      FROM tblRatingPeriod
-      WHERE IsActive = 1
-      ORDER BY DateCreated DESC
-    `);
+    const activePeriod = await prisma.ratingPeriod.findFirst({
+      where: { isActive: true },
+      orderBy: { dateCreated: 'desc' },
+      select: {
+        id: true,
+        periodName: true,
+      },
+    });
 
-    if (periodResult.recordset.length === 0) {
+    if (!activePeriod) {
       return NextResponse.json({
         assignments: [],
         categories: [],
@@ -35,76 +35,61 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const activePeriod = periodResult.recordset[0];
-
     // Get all categories
-    const categoriesResult = await pool.request().query(`
-      SELECT CategoryID, CategoryName, SortOrder
-      FROM tblRatingCategory
-      ORDER BY SortOrder
-    `);
+    const categories = await prisma.ratingCategory.findMany({
+      orderBy: { sortOrder: 'asc' },
+      select: {
+        id: true,
+        categoryName: true,
+        sortOrder: true,
+      },
+    });
 
-    // Get assignments for this rater - UserID is INT
-    const assignmentsResult = await pool
-      .request()
-      .input('raterUserId', sql.Int, parseInt(uid || '0'))
-      .input('periodId', sql.Int, activePeriod.RatingPeriodID)
-      .query(`
-        SELECT 
-          a.AssignmentID,
-          a.RateeUserID,
-          a.RateeEmail,
-          a.IsCompleted,
-          a.DateCompleted
-        FROM tblRatingAssignment a
-        WHERE a.RaterUserID = @raterUserId
-          AND a.RatingPeriodID = @periodId
-        ORDER BY a.RateeEmail
-      `);
+    // Get assignments for this rater with existing ratings
+    const assignments = await prisma.ratingAssignment.findMany({
+      where: {
+        raterUserId: validation.userId,
+        ratingPeriodId: activePeriod.id,
+      },
+      include: {
+        responses: {
+          select: {
+            categoryId: true,
+            ratingValue: true,
+            comment: true,
+          },
+        },
+      },
+      orderBy: {
+        rateeEmail: 'asc',
+      },
+    });
 
-    // Get existing ratings for these assignments
-    const assignmentIds = assignmentsResult.recordset.map((a: any) => a.AssignmentID);
-    
-    let ratingsMap: { [key: number]: any[] } = {};
-    
-    if (assignmentIds.length > 0) {
-      const ratingsResult = await pool
-        .request()
-        .query(`
-          SELECT 
-            r.AssignmentID,
-            r.CategoryID,
-            r.RatingValue,
-            r.Comment
-          FROM tblRatingResponse r
-          WHERE r.AssignmentID IN (${assignmentIds.join(',')})
-        `);
-
-      ratingsResult.recordset.forEach((rating: any) => {
-        if (!ratingsMap[rating.AssignmentID]) {
-          ratingsMap[rating.AssignmentID] = [];
-        }
-        ratingsMap[rating.AssignmentID].push(rating);
-      });
-    }
-
-    // Combine data
-    const assignments = assignmentsResult.recordset.map((assignment: any) => ({
-      assignmentId: assignment.AssignmentID,
-      rateeUserId: assignment.RateeUserID,
-      rateeEmail: assignment.RateeEmail,
-      isCompleted: assignment.IsCompleted,
-      dateCompleted: assignment.DateCompleted,
-      ratings: ratingsMap[assignment.AssignmentID] || [],
+    // Transform data to match frontend expectations
+    const formattedAssignments = assignments.map((assignment) => ({
+      assignmentId: assignment.id,
+      rateeUserId: assignment.rateeUserId,
+      rateeEmail: assignment.rateeEmail,
+      isCompleted: assignment.isCompleted,
+      dateCompleted: assignment.dateCompleted,
+      ratings: assignment.responses.map((r) => ({
+        CategoryID: r.categoryId,
+        RatingValue: r.ratingValue,
+        Comment: r.comment || '',
+      })),
     }));
 
     return NextResponse.json({
       period: {
-        id: activePeriod.RatingPeriodID,
-        name: activePeriod.PeriodName,
+        id: activePeriod.id,
+        name: activePeriod.periodName,
       },
-      categories: categoriesResult.recordset,
-      assignments,
+      categories: categories.map((c) => ({
+        CategoryID: c.id,
+        CategoryName: c.categoryName,
+        SortOrder: c.sortOrder,
+      })),
+      assignments: formattedAssignments,
     });
   } catch (error) {
     console.error('Error fetching assignments:', error);
