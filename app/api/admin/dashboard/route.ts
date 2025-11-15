@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     const categoryAverages = await prisma.$queryRaw<Array<{
       CategoryName: string;
       AverageScore: number;
-      ResponseCount: number;
+      ResponseCount: bigint;
     }>>`
       SELECT 
         c.CategoryName,
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     const topRated = await prisma.$queryRaw<Array<{
       RateeEmail: string;
       AverageScore: number;
-      RatingCount: number;
+      RatingCount: bigint;
     }>>`
       SELECT 
         a.RateeEmail,
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
     const bottomRated = await prisma.$queryRaw<Array<{
       RateeEmail: string;
       AverageScore: number;
-      RatingCount: number;
+      RatingCount: bigint;
     }>>`
       SELECT 
         a.RateeEmail,
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
     // Progress over time
     const progressOverTime = await prisma.$queryRaw<Array<{
       CompletionDate: Date;
-      CompletedCount: number;
+      CompletedCount: bigint;
     }>>`
       SELECT 
         DATE(DateCompleted) as CompletionDate,
@@ -120,10 +120,22 @@ export async function GET(request: NextRequest) {
         completedAssignments: completedCount,
         pendingAssignments: assignments.length - completedCount,
       },
-      categoryAverages,
-      topRated,
-      bottomRated,
-      progressOverTime,
+      categoryAverages: categoryAverages.map(c => ({
+        ...c,
+        ResponseCount: Number(c.ResponseCount),
+      })),
+      topRated: topRated.map(t => ({
+        ...t,
+        RatingCount: Number(t.RatingCount),
+      })),
+      bottomRated: bottomRated.map(b => ({
+        ...b,
+        RatingCount: Number(b.RatingCount),
+      })),
+      progressOverTime: progressOverTime.map(p => ({
+        ...p,
+        CompletedCount: Number(p.CompletedCount),
+      })),
     });
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);

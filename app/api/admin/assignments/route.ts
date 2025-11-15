@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getConnection, sql } from '@/lib/db';
+import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
 
 // GET all assignments
@@ -15,16 +15,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const pool = await getConnection();
-
     // If no period specified, get active period
-    let targetPeriodId = periodId;
+    let targetPeriodId = periodId ? parseInt(periodId) : null;
     if (!targetPeriodId) {
-      const activePeriod = await pool.request().query(`
-        SELECT TOP 1 RatingPeriodID FROM tblRatingPeriod WHERE IsActive = 1
-      `);
-      if (activePeriod.recordset.length > 0) {
-        targetPeriodId = activePeriod.recordset[0].RatingPeriodID;
+      const activePeriod = await prisma.ratingPeriod.findFirst({
+        where: { isActive: true },
+      });
+      if (activePeriod) {
+        targetPeriodId = activePeriod.id;
       }
     }
 
@@ -32,27 +30,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ assignments: [], message: 'No active period' });
     }
 
-    const result = await pool
-      .request()
-      .input('periodId', sql.Int, targetPeriodId)
-      .query(`
-        SELECT 
-          a.AssignmentID,
-          a.RaterUserID,
-          a.RaterEmail,
-          a.RateeUserID,
-          a.RateeEmail,
-          a.IsCompleted,
-          a.DateCompleted,
-          a.RatingPeriodID
-        FROM tblRatingAssignment a
-        WHERE a.RatingPeriodID = @periodId
-        ORDER BY a.RateeEmail, a.RaterEmail
-      `);
+    const assignments = await prisma.ratingAssignment.findMany({
+      where: { ratingPeriodId: targetPeriodId },
+      orderBy: [
+        { rateeEmail: 'asc' },
+        { raterEmail: 'asc' },
+      ],
+    });
 
-    return NextResponse.json({ 
-      assignments: result.recordset,
-      periodId: targetPeriodId 
+    return NextResponse.json({
+      assignments: assignments.map(a => ({
+        AssignmentID: a.id,
+        RaterUserID: a.raterUserId,
+        RaterEmail: a.raterEmail,
+        RateeUserID: a.rateeUserId,
+        RateeEmail: a.rateeEmail,
+        IsCompleted: a.isCompleted,
+        DateCompleted: a.dateCompleted,
+        RatingPeriodID: a.ratingPeriodId,
+      })),
+      periodId: targetPeriodId,
     });
   } catch (error) {
     console.error('Error fetching assignments:', error);
@@ -78,74 +75,62 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pool = await getConnection();
-
     // Get UserIDs from emails - UserID is INT in tblUser
-    const raterResult = await pool
-      .request()
-      .input('email', sql.NVarChar, raterEmail)
-      .query(`SELECT UserID FROM tblUser WHERE Username = @email`);
+    const rater = await prisma.user.findFirst({
+      where: { username: raterEmail },
+      select: { id: true },
+    });
 
-    const rateeResult = await pool
-      .request()
-      .input('email', sql.NVarChar, rateeEmail)
-      .query(`SELECT UserID FROM tblUser WHERE Username = @email`);
+    const ratee = await prisma.user.findFirst({
+      where: { username: rateeEmail },
+      select: { id: true },
+    });
 
-    if (raterResult.recordset.length === 0) {
+    if (!rater) {
       return NextResponse.json(
         { error: `Rater email not found: ${raterEmail}` },
         { status: 404 }
       );
     }
 
-    if (rateeResult.recordset.length === 0) {
+    if (!ratee) {
       return NextResponse.json(
         { error: `Ratee email not found: ${rateeEmail}` },
         { status: 404 }
       );
     }
 
-    const raterUserId = raterResult.recordset[0].UserID;
-    const rateeUserId = rateeResult.recordset[0].UserID;
-
     // Check for duplicate
-    const duplicate = await pool
-      .request()
-      .input('periodId', sql.Int, periodId)
-      .input('raterUserId', sql.Int, raterUserId)
-      .input('rateeUserId', sql.Int, rateeUserId)
-      .query(`
-        SELECT AssignmentID FROM tblRatingAssignment
-        WHERE RatingPeriodID = @periodId
-          AND RaterUserID = @raterUserId
-          AND RateeUserID = @rateeUserId
-      `);
+    const duplicate = await prisma.ratingAssignment.findFirst({
+      where: {
+        ratingPeriodId: periodId,
+        raterUserId: rater.id,
+        rateeUserId: ratee.id,
+      },
+    });
 
-    if (duplicate.recordset.length > 0) {
+    if (duplicate) {
       return NextResponse.json(
         { error: 'Assignment already exists' },
         { status: 409 }
       );
     }
 
-    // Insert assignment - UserID is INT
-    const result = await pool
-      .request()
-      .input('periodId', sql.Int, periodId)
-      .input('raterUserId', sql.Int, raterUserId)
-      .input('raterEmail', sql.NVarChar, raterEmail)
-      .input('rateeUserId', sql.Int, rateeUserId)
-      .input('rateeEmail', sql.NVarChar, rateeEmail)
-      .query(`
-        INSERT INTO tblRatingAssignment 
-        (RatingPeriodID, RaterUserID, RaterEmail, RateeUserID, RateeEmail, IsCompleted)
-        OUTPUT INSERTED.AssignmentID
-        VALUES (@periodId, @raterUserId, @raterEmail, @rateeUserId, @rateeEmail, 0)
-      `);
+    // Insert assignment
+    const assignment = await prisma.ratingAssignment.create({
+      data: {
+        ratingPeriodId: periodId,
+        raterUserId: rater.id,
+        raterEmail,
+        rateeUserId: ratee.id,
+        rateeEmail,
+        isCompleted: false,
+      },
+    });
 
     return NextResponse.json({
       success: true,
-      assignmentId: result.recordset[0].AssignmentID,
+      assignmentId: assignment.id,
     });
   } catch (error) {
     console.error('Error creating assignment:', error);
@@ -173,19 +158,10 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const pool = await getConnection();
-
-    // Delete related responses first
-    await pool
-      .request()
-      .input('assignmentId', sql.Int, assignmentId)
-      .query(`DELETE FROM tblRatingResponse WHERE AssignmentID = @assignmentId`);
-
-    // Delete assignment
-    await pool
-      .request()
-      .input('assignmentId', sql.Int, assignmentId)
-      .query(`DELETE FROM tblRatingAssignment WHERE AssignmentID = @assignmentId`);
+    // Prisma will automatically delete related responses due to onDelete: Cascade
+    await prisma.ratingAssignment.delete({
+      where: { id: parseInt(assignmentId) },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

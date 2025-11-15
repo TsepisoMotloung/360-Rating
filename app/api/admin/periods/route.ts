@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getConnection, sql } from '@/lib/db';
+import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
@@ -13,21 +13,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const pool = await getConnection();
-    const result = await pool.request().query(`
-      SELECT 
-        RatingPeriodID,
-        PeriodName,
-        StartDate,
-        EndDate,
-        IsActive,
-        CreatedBy,
-        DateCreated
-      FROM tblRatingPeriod
-      ORDER BY DateCreated DESC
-    `);
+    const periods = await prisma.ratingPeriod.findMany({
+      orderBy: { dateCreated: 'desc' },
+    });
 
-    return NextResponse.json({ periods: result.recordset });
+    return NextResponse.json({
+      periods: periods.map(p => ({
+        RatingPeriodID: p.id,
+        PeriodName: p.periodName,
+        StartDate: p.startDate,
+        EndDate: p.endDate,
+        IsActive: p.isActive,
+        CreatedBy: p.createdBy,
+        DateCreated: p.dateCreated,
+      })),
+    });
   } catch (error) {
     console.error('Error fetching periods:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -51,29 +51,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pool = await getConnection();
-
     // If setting this period as active, deactivate all others
     if (isActive) {
-      await pool.request().query(`UPDATE tblRatingPeriod SET IsActive = 0`);
+      await prisma.ratingPeriod.updateMany({
+        data: { isActive: false },
+      });
     }
 
-    const result = await pool
-      .request()
-      .input('periodName', sql.NVarChar, periodName)
-      .input('startDate', sql.Date, startDate)
-      .input('endDate', sql.Date, endDate)
-      .input('isActive', sql.Bit, isActive ? 1 : 0)
-      .input('createdBy', sql.NVarChar, email)
-      .query(`
-        INSERT INTO tblRatingPeriod (PeriodName, StartDate, EndDate, IsActive, CreatedBy, DateCreated)
-        OUTPUT INSERTED.RatingPeriodID
-        VALUES (@periodName, @startDate, @endDate, @isActive, @createdBy, GETDATE())
-      `);
+    const period = await prisma.ratingPeriod.create({
+      data: {
+        periodName,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        isActive: isActive ?? true,
+        createdBy: email,
+      },
+    });
 
     return NextResponse.json({
       success: true,
-      periodId: result.recordset[0].RatingPeriodID,
+      periodId: period.id,
     });
   } catch (error) {
     console.error('Error creating period:', error);
@@ -91,22 +88,17 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const pool = await getConnection();
-
     // If activating this period, deactivate all others
     if (isActive) {
-      await pool.request().query(`UPDATE tblRatingPeriod SET IsActive = 0`);
+      await prisma.ratingPeriod.updateMany({
+        data: { isActive: false },
+      });
     }
 
-    await pool
-      .request()
-      .input('periodId', sql.Int, periodId)
-      .input('isActive', sql.Bit, isActive ? 1 : 0)
-      .query(`
-        UPDATE tblRatingPeriod 
-        SET IsActive = @isActive
-        WHERE RatingPeriodID = @periodId
-      `);
+    await prisma.ratingPeriod.update({
+      where: { id: periodId },
+      data: { isActive },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

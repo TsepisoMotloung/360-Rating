@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getConnection, sql } from '@/lib/db';
+import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
 import { validateRatingInput } from '@/lib/validators';
 
@@ -22,37 +22,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pool = await getConnection();
+    // Verify assignment belongs to this rater
+    const assignment = await prisma.ratingAssignment.findFirst({
+      where: {
+        id: assignmentId,
+        raterUserId: validation.userId,
+      },
+    });
 
-    // Verify assignment belongs to this rater - UserID is INT
-    const assignmentCheck = await pool
-      .request()
-      .input('assignmentId', sql.Int, assignmentId)
-      .input('raterUserId', sql.Int, parseInt(uid))
-      .query(`
-        SELECT AssignmentID 
-        FROM tblRatingAssignment 
-        WHERE AssignmentID = @assignmentId AND RaterUserID = @raterUserId
-      `);
-
-    if (assignmentCheck.recordset.length === 0) {
+    if (!assignment) {
       return NextResponse.json(
         { error: 'Assignment not found or unauthorized' },
         { status: 404 }
       );
     }
 
-    // Start transaction
-    const transaction = pool.transaction();
-    await transaction.begin();
-
-    try {
+    // Use Prisma transaction
+    await prisma.$transaction(async (tx) => {
       // Delete existing ratings for this assignment
-      await transaction.request()
-        .input('assignmentId', sql.Int, assignmentId)
-        .query(`
-          DELETE FROM tblRatingResponse WHERE AssignmentID = @assignmentId
-        `);
+      await tx.ratingResponse.deleteMany({
+        where: { assignmentId },
+      });
 
       // Insert new ratings
       for (const rating of ratings) {
@@ -66,36 +56,31 @@ export async function POST(request: NextRequest) {
           throw new Error(validation.error);
         }
 
-        await transaction.request()
-          .input('assignmentId', sql.Int, assignmentId)
-          .input('categoryId', sql.Int, rating.categoryId)
-          .input('ratingValue', sql.Int, rating.value)
-          .input('comment', sql.NVarChar, comment || null)
-          .query(`
-            INSERT INTO tblRatingResponse (AssignmentID, CategoryID, RatingValue, Comment, UpdatedDate)
-            VALUES (@assignmentId, @categoryId, @ratingValue, @comment, GETDATE())
-          `);
+        await tx.ratingResponse.create({
+          data: {
+            assignmentId,
+            categoryId: rating.categoryId,
+            ratingValue: rating.value,
+            comment: comment || null,
+            updatedDate: new Date(),
+          },
+        });
       }
 
       // Update assignment as completed
-      await transaction.request()
-        .input('assignmentId', sql.Int, assignmentId)
-        .query(`
-          UPDATE tblRatingAssignment 
-          SET IsCompleted = 1, DateCompleted = GETDATE()
-          WHERE AssignmentID = @assignmentId
-        `);
-
-      await transaction.commit();
-
-      return NextResponse.json({
-        success: true,
-        message: 'Rating submitted successfully',
+      await tx.ratingAssignment.update({
+        where: { id: assignmentId },
+        data: {
+          isCompleted: true,
+          dateCompleted: new Date(),
+        },
       });
-    } catch (error) {
-      await transaction.rollback();
-      throw error;
-    }
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Rating submitted successfully',
+    });
   } catch (error) {
     console.error('Error submitting rating:', error);
     return NextResponse.json(

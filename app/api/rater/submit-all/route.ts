@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getConnection, sql } from '@/lib/db';
+import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
 import { validateRatingInput } from '@/lib/validators';
 
@@ -21,43 +21,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pool = await getConnection();
-
-    // Verify all assignments belong to this rater - UserID is INT
+    // Verify all assignments belong to this rater
     const assignmentIds = submissions.map((s: any) => s.assignmentId);
-    const assignmentCheck = await pool
-      .request()
-      .input('raterUserId', sql.Int, parseInt(uid))
-      .query(`
-        SELECT AssignmentID 
-        FROM tblRatingAssignment 
-        WHERE RaterUserID = @raterUserId 
-          AND AssignmentID IN (${assignmentIds.join(',')})
-      `);
+    const assignmentCheck = await prisma.ratingAssignment.findMany({
+      where: {
+        raterUserId: validation.userId,
+        id: { in: assignmentIds },
+      },
+      select: { id: true },
+    });
 
-    if (assignmentCheck.recordset.length !== assignmentIds.length) {
+    if (assignmentCheck.length !== assignmentIds.length) {
       return NextResponse.json(
         { error: 'Some assignments not found or unauthorized' },
         { status: 404 }
       );
     }
 
-    // Start transaction
-    const transaction = pool.transaction();
-    await transaction.begin();
+    // Process all submissions in a transaction
+    let successCount = 0;
 
-    try {
-      let successCount = 0;
-
+    await prisma.$transaction(async (tx) => {
       for (const submission of submissions) {
         const { assignmentId, ratings, comment } = submission;
 
         // Delete existing ratings
-        await transaction.request()
-          .input('assignmentId', sql.Int, assignmentId)
-          .query(`
-            DELETE FROM tblRatingResponse WHERE AssignmentID = @assignmentId
-          `);
+        await tx.ratingResponse.deleteMany({
+          where: { assignmentId },
+        });
 
         // Insert new ratings
         for (const rating of ratings) {
@@ -71,40 +62,35 @@ export async function POST(request: NextRequest) {
             throw new Error(`Invalid rating: ${validation.error}`);
           }
 
-          await transaction.request()
-            .input('assignmentId', sql.Int, assignmentId)
-            .input('categoryId', sql.Int, rating.categoryId)
-            .input('ratingValue', sql.Int, rating.value)
-            .input('comment', sql.NVarChar, comment || null)
-            .query(`
-              INSERT INTO tblRatingResponse (AssignmentID, CategoryID, RatingValue, Comment, UpdatedDate)
-              VALUES (@assignmentId, @categoryId, @ratingValue, @comment, GETDATE())
-            `);
+          await tx.ratingResponse.create({
+            data: {
+              assignmentId,
+              categoryId: rating.categoryId,
+              ratingValue: rating.value,
+              comment: comment || null,
+              updatedDate: new Date(),
+            },
+          });
         }
 
         // Update assignment as completed
-        await transaction.request()
-          .input('assignmentId', sql.Int, assignmentId)
-          .query(`
-            UPDATE tblRatingAssignment 
-            SET IsCompleted = 1, DateCompleted = GETDATE()
-            WHERE AssignmentID = @assignmentId
-          `);
+        await tx.ratingAssignment.update({
+          where: { id: assignmentId },
+          data: {
+            isCompleted: true,
+            dateCompleted: new Date(),
+          },
+        });
 
         successCount++;
       }
+    });
 
-      await transaction.commit();
-
-      return NextResponse.json({
-        success: true,
-        message: `Successfully submitted ${successCount} ratings`,
-        count: successCount,
-      });
-    } catch (error) {
-      await transaction.rollback();
-      throw error;
-    }
+    return NextResponse.json({
+      success: true,
+      message: `Successfully submitted ${successCount} ratings`,
+      count: successCount,
+    });
   } catch (error) {
     console.error('Error submitting bulk ratings:', error);
     return NextResponse.json(

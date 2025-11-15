@@ -36,7 +36,7 @@ export async function validateUser(
       },
     });
 
-    if (!user) {
+    if (!user || !user.username) {
       return { isValid: false };
     }
 

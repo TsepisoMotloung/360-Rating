@@ -1,0 +1,112 @@
+// This is your Prisma schema file for MySQL
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Existing User table (from your database)
+model User {
+  id                    Int      @id @default(autoincrement()) @map("UserID")
+  username              String?  @map("Username") @db.VarChar(100)
+  firstName             String?  @map("FName") @db.VarChar(100)
+  surname               String?  @map("Surname") @db.VarChar(100)
+  dateCreated           DateTime? @map("DateCreated") @db.DateTime
+  createdBy             String?  @map("CreatedBy") @db.VarChar(100)
+  isActive              Int?     @map("IsActive")
+
+  // Relations for rating assignments
+  ratingsGiven          RatingAssignment[] @relation("RaterAssignments")
+  ratingsReceived       RatingAssignment[] @relation("RateeAssignments")
+
+  @@map("tblUser")
+  @@index([username], name: "idx_username")
+}
+
+// Rating Period
+model RatingPeriod {
+  id              Int       @id @default(autoincrement()) @map("RatingPeriodID")
+  periodName      String    @map("PeriodName") @db.VarChar(200)
+  startDate       DateTime  @map("StartDate") @db.Date
+  endDate         DateTime  @map("EndDate") @db.Date
+  isActive        Boolean   @default(true) @map("IsActive")
+  createdBy       String?   @map("CreatedBy") @db.VarChar(100)
+  dateCreated     DateTime  @default(now()) @map("DateCreated") @db.DateTime
+
+  assignments     RatingAssignment[]
+
+  @@map("tblRatingPeriod")
+  @@index([isActive], name: "idx_active_period")
+}
+
+// Rating Categories
+model RatingCategory {
+  id              Int       @id @default(autoincrement()) @map("CategoryID")
+  categoryName    String    @map("CategoryName") @db.VarChar(100)
+  sortOrder       Int       @map("SortOrder")
+
+  responses       RatingResponse[]
+
+  @@map("tblRatingCategory")
+  @@index([sortOrder], name: "idx_sort_order")
+}
+
+// Rating Assignments
+model RatingAssignment {
+  id              Int       @id @default(autoincrement()) @map("AssignmentID")
+  ratingPeriodId  Int       @map("RatingPeriodID")
+  raterUserId     Int       @map("RaterUserID")
+  raterEmail      String    @map("RaterEmail") @db.VarChar(100)
+  rateeUserId     Int       @map("RateeUserID")
+  rateeEmail      String    @map("RateeEmail") @db.VarChar(100)
+  isCompleted     Boolean   @default(false) @map("IsCompleted")
+  dateCompleted   DateTime? @map("DateCompleted") @db.DateTime
+  createdDate     DateTime  @default(now()) @map("CreatedDate") @db.DateTime
+
+  // Relations
+  period          RatingPeriod @relation(fields: [ratingPeriodId], references: [id], onDelete: Cascade)
+  rater           User @relation("RaterAssignments", fields: [raterUserId], references: [id], onDelete: Cascade)
+  ratee           User @relation("RateeAssignments", fields: [rateeUserId], references: [id], onDelete: Cascade)
+  responses       RatingResponse[]
+
+  @@map("tblRatingAssignment")
+  @@unique([ratingPeriodId, raterUserId, rateeUserId], name: "unique_assignment")
+  @@index([raterUserId, ratingPeriodId], name: "idx_rater_period")
+  @@index([rateeUserId, ratingPeriodId], name: "idx_ratee_period")
+  @@index([ratingPeriodId], name: "idx_period")
+}
+
+// Rating Responses
+model RatingResponse {
+  id              Int       @id @default(autoincrement()) @map("ResponseID")
+  assignmentId    Int       @map("AssignmentID")
+  categoryId      Int       @map("CategoryID")
+  ratingValue     Int       @map("RatingValue")
+  comment         String?   @map("Comment") @db.Text
+  updatedDate     DateTime  @default(now()) @map("UpdatedDate") @db.DateTime
+
+  // Relations
+  assignment      RatingAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  category        RatingCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("tblRatingResponse")
+  @@index([assignmentId], name: "idx_assignment")
+  @@index([categoryId], name: "idx_category")
+}
+
+// Admin Reports Log
+model AdminReportsLog {
+  id              Int       @id @default(autoincrement()) @map("LogID")
+  adminEmail      String    @map("AdminEmail") @db.VarChar(100)
+  reportType      String?   @map("ReportType") @db.VarChar(200)
+  exportDate      DateTime  @default(now()) @map("ExportDate") @db.DateTime
+
+  @@map("tblAdminReportsLog")
+  @@index([adminEmail], name: "idx_admin_email")
+  @@index([exportDate], name: "idx_export_date")
+}
