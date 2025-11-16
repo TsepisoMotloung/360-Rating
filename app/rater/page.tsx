@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { extractAuthParams } from '@/lib/params';
 import Accordion from '@/components/Accordion';
 import RatingScale from '@/components/RatingScale';
 import { Loader2, Send } from 'lucide-react';
@@ -37,8 +38,7 @@ interface RatingFormData {
 function RaterContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const uid = searchParams.get('uid');
-  const email = searchParams.get('email');
+  const { uid, email } = extractAuthParams(searchParams as any);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -50,7 +50,7 @@ function RaterContent() {
 
   useEffect(() => {
     if (!uid || !email) {
-      router.push('/unauthorized');
+      router.push('/error-invalid-request');
       return;
     }
     fetchAssignments();
@@ -61,7 +61,7 @@ function RaterContent() {
       const response = await fetch(`/api/rater/assignments?uid=${uid}&email=${email}`);
       if (!response.ok) {
         if (response.status === 401) {
-          router.push('/unauthorized');
+          router.push('/error-access-denied');
           return;
         }
         throw new Error('Failed to fetch assignments');

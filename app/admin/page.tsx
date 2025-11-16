@@ -4,12 +4,12 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Loader2, Users, CheckCircle, Clock, TrendingUp } from 'lucide-react';
+import { extractAuthParams } from '@/lib/params';
 
 function AdminContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const uid = searchParams.get('uid');
-  const email = searchParams.get('email');
+  const { uid, email } = extractAuthParams(searchParams as any);
 
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<any>(null);
@@ -21,7 +21,7 @@ function AdminContent() {
 
   useEffect(() => {
     if (!uid || !email) {
-      router.push('/unauthorized');
+      router.push('/error-invalid-request');
       return;
     }
     fetchDashboardData();
@@ -32,7 +32,7 @@ function AdminContent() {
       const response = await fetch(`/api/admin/dashboard?uid=${uid}&email=${email}`);
       if (!response.ok) {
         if (response.status === 401) {
-          router.push('/unauthorized');
+          router.push('/error-access-denied');
           return;
         }
         throw new Error('Failed to fetch dashboard data');
@@ -91,12 +91,32 @@ function AdminContent() {
               )}
               <p className="text-sm text-gray-500 mt-1">Logged in as: {email}</p>
             </div>
-            <button
-              onClick={() => router.push(`/admin/assignments?uid=${uid}&email=${email}`)}
-              className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-            >
-              Manage Assignments
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => router.push(`/admin/assignments?uid=${uid}&email=${email}`)}
+                className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              >
+                Manage Assignments
+              </button>
+              <button
+                onClick={() => router.push(`/admin/import?uid=${uid}&email=${email}`)}
+                className="px-6 py-2 bg-red-100 text-black rounded-lg hover:bg-secondary-700 transition-colors"
+              >
+                Import Assignments
+              </button>
+              <button
+                onClick={() => router.push(`/admin/reports?uid=${uid}&email=${email}`)}
+                className="px-6 py-2 bg-white text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+              >
+                Generate Reports
+              </button>
+              <button
+                onClick={() => router.push(`/admin/admins?uid=${uid}&email=${email}`)}
+                className="px-6 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Manage Admins
+              </button>
+            </div>
           </div>
         </div>
 

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
+import { extractAuthParams } from '@/lib/params';
 
 // GET all assignments
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const uid = searchParams.get('uid');
-    const email = searchParams.get('email');
+    const { uid, email } = extractAuthParams(searchParams as any);
     const periodId = searchParams.get('periodId');
 
     const validation = await validateUser(uid, email);
@@ -75,37 +75,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get UserIDs from emails - UserID is INT in tblUser
-    const rater = await prisma.tblUser.findFirst({
-      where: { Username: raterEmail },
-      select: { UserID: true },
-    });
-
-    const ratee = await prisma.tblUser.findFirst({
-      where: { Username: rateeEmail },
-      select: { UserID: true },
-    });
-
-    if (!rater) {
+    // Resolve rater/ratee to canonical user ids (handles duplicate users)
+    const raterValidation = await validateUser(null, raterEmail);
+    if (!raterValidation.isValid || !raterValidation.userId) {
       return NextResponse.json(
         { error: `Rater email not found: ${raterEmail}` },
         { status: 404 }
       );
     }
 
-    if (!ratee) {
+    const rateeValidation = await validateUser(null, rateeEmail);
+    if (!rateeValidation.isValid || !rateeValidation.userId) {
       return NextResponse.json(
         { error: `Ratee email not found: ${rateeEmail}` },
         { status: 404 }
       );
     }
 
-    // Check for duplicate
+    // Check for duplicate (use canonical user ids)
     const duplicate = await prisma.ratingAssignment.findFirst({
       where: {
         ratingPeriodId: periodId,
-        raterUserId: rater.UserID,
-        rateeUserId: ratee.UserID,
+        raterUserId: raterValidation.userId,
+        rateeUserId: rateeValidation.userId,
       },
     });
 
@@ -120,9 +112,9 @@ export async function POST(request: NextRequest) {
     const assignment = await prisma.ratingAssignment.create({
       data: {
         ratingPeriodId: periodId,
-        raterUserId: rater.UserID,
+        raterUserId: raterValidation.userId,
         raterEmail,
-        rateeUserId: ratee.UserID,
+        rateeUserId: rateeValidation.userId,
         rateeEmail,
         isCompleted: false,
       },
@@ -142,8 +134,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const uid = searchParams.get('uid');
-    const email = searchParams.get('email');
+    const { uid, email } = extractAuthParams(searchParams as any);
     const assignmentId = searchParams.get('assignmentId');
 
     const validation = await validateUser(uid, email);

@@ -3,23 +3,45 @@
 import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { extractAuthParams } from '@/lib/params';
 
 function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const uid = searchParams.get('uid');
-  const email = searchParams.get('email');
+  const { uid, email } = extractAuthParams(searchParams as any);
 
   useEffect(() => {
-    if (uid && email) {
-      if (email.toLowerCase() === 'tmotloung@alliance.co.ls') {
-        router.push(`/admin?uid=${uid}&email=${email}`);
-      } else {
-        router.push(`/rater?uid=${uid}&email=${email}`);
+    async function resolveAndRedirect() {
+      if (!uid || !email) {
+        router.push('/error-invalid-request');
+        return;
       }
-    } else {
-      router.push('/unauthorized');
+
+      try {
+        const res = await fetch(`/api/auth/resolve?uid=${encodeURIComponent(
+          uid
+        )}&email=${encodeURIComponent(email)}`);
+        if (!res.ok) {
+          router.push('/error-session-expired');
+          return;
+        }
+
+        const data = await res.json();
+        const finalUid = data.canonicalUid ?? uid;
+        const finalEmail = data.canonicalEmail ?? email;
+
+        if ((finalEmail || '').toLowerCase() === 'tmotloung@alliance.co.ls') {
+          router.push(`/admin?uid=${finalUid}&email=${finalEmail}`);
+        } else {
+          router.push(`/rater?uid=${finalUid}&email=${finalEmail}`);
+        }
+      } catch (err) {
+        console.error('Redirect error:', err);
+        router.push('/error-session-expired');
+      }
     }
+
+    resolveAndRedirect();
   }, [uid, email, router]);
 
   return (

@@ -74,6 +74,17 @@ async function main() {
       console.log('Sample users:', sampleUsers);
     }
 
+    // Ensure at least one administrator exists to avoid accidental lockout
+    const existingAdmins = await prisma.tblAdministrators.count();
+    if (existingAdmins === 0) {
+      const bootstrapAdmin = 'tmotloung@alliance.co.ls';
+      console.log(`Seeding initial administrator: ${bootstrapAdmin}`);
+      await prisma.tblAdministrators.create({ data: { Username: bootstrapAdmin, Description: 'Initial bootstrap admin', IsActive: 1 } });
+      console.log('✅ Bootstrap admin created');
+    } else {
+      console.log(`ℹ️  ${existingAdmins} administrators already present, skipping bootstrap.`);
+    }
+
     console.log('🎉 Database seeding completed successfully!');
   } catch (error) {
     console.error('❌ Error during seeding:', error);

@@ -8,6 +8,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
+import { validateUser } from '../lib/auth';
 
 const prisma = new PrismaClient();
 
@@ -59,25 +60,16 @@ async function importAssignments() {
       try {
         const { raterEmail, rateeEmail } = assignment;
 
-        // Get rater user
-        const rater = await prisma.tblUser.findFirst({
-          where: { Username: raterEmail },
-          select: { UserID: true },
-        });
-
-        if (!rater) {
+        // Resolve rater and ratee to canonical users using validateUser
+        const raterValidation = await validateUser(null, raterEmail);
+        if (!raterValidation.isValid || !raterValidation.userId) {
           console.warn(`⚠️  Rater not found: ${raterEmail}`);
           errorCount++;
           continue;
         }
 
-        // Get ratee user
-        const ratee = await prisma.tblUser.findFirst({
-          where: { Username: rateeEmail },
-          select: { UserID: true },
-        });
-
-        if (!ratee) {
+        const rateeValidation = await validateUser(null, rateeEmail);
+        if (!rateeValidation.isValid || !rateeValidation.userId) {
           console.warn(`⚠️  Ratee not found: ${rateeEmail}`);
           errorCount++;
           continue;
@@ -87,8 +79,8 @@ async function importAssignments() {
         const existing = await prisma.ratingAssignment.findFirst({
           where: {
             ratingPeriodId: activePeriod.id,
-            raterUserId: rater.id,
-            rateeUserId: ratee.id,
+            raterUserId: raterValidation.userId,
+            rateeUserId: rateeValidation.userId,
           },
         });
 
@@ -101,9 +93,9 @@ async function importAssignments() {
         await prisma.ratingAssignment.create({
           data: {
             ratingPeriodId: activePeriod.id,
-            raterUserId: rater.id,
+            raterUserId: raterValidation.userId,
             raterEmail,
-            rateeUserId: ratee.id,
+            rateeUserId: rateeValidation.userId,
             rateeEmail,
             isCompleted: false,
           },
@@ -142,11 +134,11 @@ async function generateSampleData() {
 
   const users = await prisma.tblUser.findMany({
     where: {
-      username: { endsWith: '@alliance.co.ls' },
+      Username: { endsWith: '@alliance.co.ls' },
     },
     select: {
-      id: true,
-      username: true,
+      UserID: true,
+      Username: true,
     },
     take: 20,
   });
@@ -165,10 +157,10 @@ async function generateSampleData() {
 
   for (const manager of managers) {
     for (const rater of raters) {
-      if (manager.username && rater.username) {
+      if (manager.Username && rater.Username) {
         assignments.push({
-          rateeEmail: manager.username,
-          raterEmail: rater.username,
+          rateeEmail: manager.Username,
+          raterEmail: rater.Username,
         });
       }
     }

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
+import { extractAuthParams } from '@/lib/params';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const uid = searchParams.get('uid');
-    const email = searchParams.get('email');
+    const { uid, email } = extractAuthParams(searchParams as any);
 
     const validation = await validateUser(uid, email);
     if (!validation.isValid || !validation.isAdmin) {

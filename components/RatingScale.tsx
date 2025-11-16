@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Star } from 'lucide-react';
 
 interface RatingScaleProps {
   value: number;
@@ -13,31 +14,34 @@ const RatingScale: React.FC<RatingScaleProps> = ({ value, onChange, disabled = f
   const labels = ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex gap-2 justify-between">
-        {ratings.map((rating, idx) => (
-          <button
-            key={rating}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(rating)}
-            className={`
-              flex-1 py-3 px-4 rounded-lg font-medium transition-all duration-200
-              ${value === rating
-                ? 'bg-primary-600 text-white shadow-lg scale-105'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:scale-102'
-              }
-              ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-              focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
-            `}
-            aria-label={`Rating ${rating} - ${labels[idx]}`}
-          >
-            <div className="flex flex-col items-center">
-              <span className="text-2xl font-bold">{rating}</span>
-              <span className="text-xs mt-1">{labels[idx]}</span>
-            </div>
-          </button>
-        ))}
+    <div className="flex flex-col gap-4">
+      {/* Star Rating */}
+      <div className="flex items-center gap-3">
+        <div className="flex gap-2">
+          {ratings.map((rating) => (
+            <button
+              key={rating}
+              type="button"
+              disabled={disabled}
+              onClick={() => onChange(rating)}
+              className={`transition-all duration-200 transform hover:scale-110 ${
+                disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+              }`}
+              aria-label={`Rating ${rating} - ${labels[rating - 1]}`}
+            >
+              <Star
+                className={`w-8 h-8 transition-colors duration-200 ${
+                  rating <= value
+                    ? 'fill-red-500 text-red-500'
+                    : 'text-gray-300 hover:text-red-300'
+                }`}
+              />
+            </button>
+          ))}
+        </div>
+        <span className="text-sm font-medium text-gray-700 min-w-max">
+          {value > 0 ? labels[value - 1] : 'Not rated'}
+        </span>
       </div>
     </div>
   );
