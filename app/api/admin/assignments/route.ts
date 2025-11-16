@@ -104,8 +104,8 @@ export async function POST(request: NextRequest) {
     const duplicate = await prisma.ratingAssignment.findFirst({
       where: {
         ratingPeriodId: periodId,
-        raterUserId: rater.id,
-        rateeUserId: ratee.id,
+        raterUserId: rater.UserID,
+        rateeUserId: ratee.UserID,
       },
     });
 
@@ -120,9 +120,9 @@ export async function POST(request: NextRequest) {
     const assignment = await prisma.ratingAssignment.create({
       data: {
         ratingPeriodId: periodId,
-        raterUserId: rater.id,
+        raterUserId: rater.UserID,
         raterEmail,
-        rateeUserId: ratee.id,
+        rateeUserId: ratee.UserID,
         rateeEmail,
         isCompleted: false,
       },

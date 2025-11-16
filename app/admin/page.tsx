@@ -194,7 +194,8 @@ function AdminContent() {
                     <tr key={idx} className="border-b border-gray-100">
                       <td className="py-3 px-4 text-sm text-gray-900">{item.RateeEmail}</td>
                       <td className="py-3 px-4 text-sm text-right font-medium text-green-600">
-                        {item.AverageScore.toFixed(2)}
+                        {/* {item.AverageScore.toFixed(2)} */}
+                        {Number(item?.AverageScore ?? 0).toFixed(2)}
                       </td>
                       <td className="py-3 px-4 text-sm text-right text-gray-600">{item.RatingCount}</td>
                     </tr>
@@ -221,7 +222,8 @@ function AdminContent() {
                     <tr key={idx} className="border-b border-gray-100">
                       <td className="py-3 px-4 text-sm text-gray-900">{item.RateeEmail}</td>
                       <td className="py-3 px-4 text-sm text-right font-medium text-amber-600">
-                        {item.AverageScore.toFixed(2)}
+                        {/* {item.AverageScore.toFixed(2)} */}
+                        {Number(item?.AverageScore ?? 0).toFixed(2)}
                       </td>
                       <td className="py-3 px-4 text-sm text-right text-gray-600">{item.RatingCount}</td>
                     </tr>
