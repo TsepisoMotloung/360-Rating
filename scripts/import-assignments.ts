@@ -60,9 +60,9 @@ async function importAssignments() {
         const { raterEmail, rateeEmail } = assignment;
 
         // Get rater user
-        const rater = await prisma.user.findFirst({
-          where: { username: raterEmail },
-          select: { id: true },
+        const rater = await prisma.tblUser.findFirst({
+          where: { Username: raterEmail },
+          select: { UserID: true },
         });
 
         if (!rater) {
@@ -72,9 +72,9 @@ async function importAssignments() {
         }
 
         // Get ratee user
-        const ratee = await prisma.user.findFirst({
-          where: { username: rateeEmail },
-          select: { id: true },
+        const ratee = await prisma.tblUser.findFirst({
+          where: { Username: rateeEmail },
+          select: { UserID: true },
         });
 
         if (!ratee) {
@@ -140,7 +140,7 @@ async function importAssignments() {
 async function generateSampleData() {
   console.log('🎲 Generating sample assignment data...');
 
-  const users = await prisma.user.findMany({
+  const users = await prisma.tblUser.findMany({
     where: {
       username: { endsWith: '@alliance.co.ls' },
     },

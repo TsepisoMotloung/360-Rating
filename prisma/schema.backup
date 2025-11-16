@@ -7,6 +7,31 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================
+// EXISTING TABLES (Don't modify these)
+// ============================================
+
+model User {
+  id          Int           @id @default(autoincrement()) @map("UserID")
+  username    String?       @map("Username") @db.VarChar(50)
+  firstName   String?       @map("FName") @db.VarChar(50)
+  surname     String?       @map("Surname") @db.VarChar(50)
+  dateCreated DateTime?     @map("DateCreated") @db.DateTime(0)
+  createdBy   String?       @map("CreatedBy") @db.VarChar(50)
+  isActive    Int?          @map("IsActive")
+  
+  // Existing relations
+  tblMain     tblMain[]
+  tblPIN      tblPIN[]
+  tblUserRole tblUserRole[]
+  
+  // NEW: Relations for rating system
+  ratingsGiven    RatingAssignment[] @relation("RaterAssignments")
+  ratingsReceived RatingAssignment[] @relation("RateeAssignments")
+
+  @@map("tblUser")
+}
+
 model tblAOI {
   AOIID         Int        @id @default(autoincrement())
   RecordedBy    String?    @db.VarChar(50)
@@ -39,32 +64,6 @@ model tblBranch {
   IsActive Int?
   UserID   String?  @db.Char(10)
   tblAOI   tblAOI[]
-}
-
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
-model tblCompany {
-  CompanyDetailID  Int
-  CompanyName      String   @db.VarChar(50)
-  RegNr            String?  @db.VarChar(50)
-  TaxNr            String?  @db.VarChar(50)
-  PhysicalAddress  String?  @db.Text
-  PostalAddress    String?  @db.Text
-  Phone            String?  @db.VarChar(50)
-  Email            String?  @db.VarChar(50)
-  OriginatingEmail String?  @db.VarChar(50)
-  MailServer       String?  @db.VarChar(50)
-  SendingPort      String?  @db.VarChar(50)
-  SMTPServerPort   String?  @db.VarChar(50)
-  SMTPAuthenticate String?  @db.VarChar(50)
-  SMTPUsername     String?  @db.VarChar(50)
-  SMTPPwd          String?  @db.VarChar(50)
-  IsActiveRec      Int
-  CreatedBy        String   @db.VarChar(50)
-  DateCreated      DateTime @db.DateTime(0)
-  Website          String?  @db.VarChar(50)
-  AppLink          String?  @db.VarChar(500)
-
-  @@ignore
 }
 
 model tblDept {
@@ -107,7 +106,7 @@ model tblMain {
   ActiveUser    Int?
   tblProduct    tblProduct? @relation(fields: [ProductID], references: [ProductID], onDelete: Restrict, onUpdate: Restrict, map: "FK_tblMain_tblProduct")
   tblTask       tblTask?    @relation(fields: [TaskID], references: [TaskID], onDelete: Restrict, onUpdate: Restrict, map: "FK_tblMain_tblTask")
-  tblUser       tblUser?    @relation(fields: [ActiveUser], references: [UserID], onDelete: Restrict, onUpdate: Restrict, map: "FK_tblMain_tblUser")
+  tblUser       User?       @relation(fields: [ActiveUser], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "FK_tblMain_tblUser")
 
   @@index([ProductID], map: "FK_tblMain_tblProduct")
   @@index([TaskID], map: "FK_tblMain_tblTask")
@@ -121,7 +120,7 @@ model tblPIN {
   DateCreated DateTime? @db.DateTime(0)
   ExpiryDate  DateTime? @db.DateTime(0)
   IsActive    Int?
-  tblUser     tblUser?  @relation(fields: [UserID], references: [UserID], onDelete: Restrict, onUpdate: Restrict, map: "FK_tblPIN_tblUser")
+  tblUser     User?     @relation(fields: [UserID], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "FK_tblPIN_tblUser")
 
   @@index([UserID], map: "FK_tblPIN_tblUser")
 }
@@ -171,21 +170,6 @@ model tblTask {
   @@index([DeptID], map: "FK_tblTask_tblDept")
 }
 
-model tblUser {
-  UserID          Int                @id @default(autoincrement())
-  Username        String?            @db.VarChar(50)
-  FName           String?            @db.VarChar(50)
-  Surname         String?            @db.VarChar(50)
-  DateCreated     DateTime?          @db.DateTime(0)
-  CreatedBy       String?            @db.VarChar(50)
-  IsActive        Int?
-  tblMain         tblMain[]
-  tblPIN          tblPIN[]
-  ratingsReceived RatingAssignment[] @relation("RateeAssignments")
-  ratingsGiven    RatingAssignment[] @relation("RaterAssignments")
-  tblUserRole     tblUserRole[]
-}
-
 model tblUserRole {
   UserRoleID  Int       @id @default(autoincrement())
   UserID      Int?
@@ -197,81 +181,115 @@ model tblUserRole {
   DeptID      Int?
   tblDept     tblDept?  @relation(fields: [DeptID], references: [DeptID], onDelete: Restrict, onUpdate: Restrict, map: "FK_tblUserRole_tblDept")
   tblRole     tblRole?  @relation(fields: [RoleID], references: [RoleID], onDelete: Restrict, onUpdate: Restrict, map: "FK_tblUserRole_tblRole")
-  tblUser     tblUser?  @relation(fields: [UserID], references: [UserID], onDelete: Restrict, onUpdate: Restrict, map: "FK_tblUserRole_tblUser")
+  tblUser     User?     @relation(fields: [UserID], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "FK_tblUserRole_tblUser")
 
   @@index([DeptID], map: "FK_tblUserRole_tblDept")
   @@index([RoleID], map: "FK_tblUserRole_tblRole")
   @@index([UserID], map: "FK_tblUserRole_tblUser")
 }
 
-model RatingPeriod {
-  id          Int                @id @default(autoincrement()) @map("RatingPeriodID")
-  periodName  String             @map("PeriodName") @db.VarChar(200)
-  startDate   DateTime           @map("StartDate") @db.Date
-  endDate     DateTime           @map("EndDate") @db.Date
-  isActive    Boolean            @default(true) @map("IsActive")
-  createdBy   String?            @map("CreatedBy") @db.VarChar(100)
-  dateCreated DateTime           @default(now()) @map("DateCreated") @db.DateTime(0)
-  assignments RatingAssignment[]
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tblCompany {
+  CompanyDetailID  Int
+  CompanyName      String   @db.VarChar(50)
+  RegNr            String?  @db.VarChar(50)
+  TaxNr            String?  @db.VarChar(50)
+  PhysicalAddress  String?  @db.Text
+  PostalAddress    String?  @db.Text
+  Phone            String?  @db.VarChar(50)
+  Email            String?  @db.VarChar(50)
+  OriginatingEmail String?  @db.VarChar(50)
+  MailServer       String?  @db.VarChar(50)
+  SendingPort      String?  @db.VarChar(50)
+  SMTPServerPort   String?  @db.VarChar(50)
+  SMTPAuthenticate String?  @db.VarChar(50)
+  SMTPUsername     String?  @db.VarChar(50)
+  SMTPPwd          String?  @db.VarChar(50)
+  IsActiveRec      Int
+  CreatedBy        String   @db.VarChar(50)
+  DateCreated      DateTime @db.DateTime(0)
+  Website          String?  @db.VarChar(50)
+  AppLink          String?  @db.VarChar(500)
 
-  @@index([isActive], map: "idx_active_period")
+  @@ignore
+}
+
+// ============================================
+// NEW TABLES FOR RATING SYSTEM
+// ============================================
+
+model RatingPeriod {
+  id              Int       @id @default(autoincrement()) @map("RatingPeriodID")
+  periodName      String    @map("PeriodName") @db.VarChar(200)
+  startDate       DateTime  @map("StartDate") @db.Date
+  endDate         DateTime  @map("EndDate") @db.Date
+  isActive        Boolean   @default(true) @map("IsActive")
+  createdBy       String?   @map("CreatedBy") @db.VarChar(100)
+  dateCreated     DateTime  @default(now()) @map("DateCreated") @db.DateTime(0)
+
+  assignments     RatingAssignment[]
+
   @@map("tblRatingPeriod")
+  @@index([isActive], map: "idx_active_period")
 }
 
 model RatingCategory {
-  id           Int              @id @default(autoincrement()) @map("CategoryID")
-  categoryName String           @map("CategoryName") @db.VarChar(100)
-  sortOrder    Int              @map("SortOrder")
-  responses    RatingResponse[]
+  id              Int       @id @default(autoincrement()) @map("CategoryID")
+  categoryName    String    @map("CategoryName") @db.VarChar(100)
+  sortOrder       Int       @map("SortOrder")
 
-  @@index([sortOrder], map: "idx_sort_order")
+  responses       RatingResponse[]
+
   @@map("tblRatingCategory")
+  @@index([sortOrder], map: "idx_sort_order")
 }
 
 model RatingAssignment {
-  id             Int              @id @default(autoincrement()) @map("AssignmentID")
-  ratingPeriodId Int              @map("RatingPeriodID")
-  raterUserId    Int              @map("RaterUserID")
-  raterEmail     String           @map("RaterEmail") @db.VarChar(100)
-  rateeUserId    Int              @map("RateeUserID")
-  rateeEmail     String           @map("RateeEmail") @db.VarChar(100)
-  isCompleted    Boolean          @default(false) @map("IsCompleted")
-  dateCompleted  DateTime?        @map("DateCompleted") @db.DateTime(0)
-  createdDate    DateTime         @default(now()) @map("CreatedDate") @db.DateTime(0)
-  ratee          tblUser          @relation("RateeAssignments", fields: [rateeUserId], references: [UserID], onDelete: Cascade)
-  rater          tblUser          @relation("RaterAssignments", fields: [raterUserId], references: [UserID], onDelete: Cascade)
-  period         RatingPeriod     @relation(fields: [ratingPeriodId], references: [id], onDelete: Cascade)
-  responses      RatingResponse[]
+  id              Int       @id @default(autoincrement()) @map("AssignmentID")
+  ratingPeriodId  Int       @map("RatingPeriodID")
+  raterUserId     Int       @map("RaterUserID")
+  raterEmail      String    @map("RaterEmail") @db.VarChar(100)
+  rateeUserId     Int       @map("RateeUserID")
+  rateeEmail      String    @map("RateeEmail") @db.VarChar(100)
+  isCompleted     Boolean   @default(false) @map("IsCompleted")
+  dateCompleted   DateTime? @map("DateCompleted") @db.DateTime(0)
+  createdDate     DateTime  @default(now()) @map("CreatedDate") @db.DateTime(0)
 
-  @@unique([ratingPeriodId, raterUserId, rateeUserId], name: "unique_assignment", map: "unique_assignment")
+  period          RatingPeriod @relation(fields: [ratingPeriodId], references: [id], onDelete: Cascade)
+  rater           User @relation("RaterAssignments", fields: [raterUserId], references: [id], onDelete: Cascade)
+  ratee           User @relation("RateeAssignments", fields: [rateeUserId], references: [id], onDelete: Cascade)
+  responses       RatingResponse[]
+
+  @@map("tblRatingAssignment")
+  @@unique([ratingPeriodId, raterUserId, rateeUserId], name: "unique_assignment")
   @@index([raterUserId, ratingPeriodId], map: "idx_rater_period")
   @@index([rateeUserId, ratingPeriodId], map: "idx_ratee_period")
   @@index([ratingPeriodId], map: "idx_period")
-  @@map("tblRatingAssignment")
 }
 
 model RatingResponse {
-  id           Int              @id @default(autoincrement()) @map("ResponseID")
-  assignmentId Int              @map("AssignmentID")
-  categoryId   Int              @map("CategoryID")
-  ratingValue  Int              @map("RatingValue")
-  comment      String?          @map("Comment") @db.Text
-  updatedDate  DateTime         @default(now()) @map("UpdatedDate") @db.DateTime(0)
-  assignment   RatingAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  category     RatingCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  id              Int       @id @default(autoincrement()) @map("ResponseID")
+  assignmentId    Int       @map("AssignmentID")
+  categoryId      Int       @map("CategoryID")
+  ratingValue     Int       @map("RatingValue")
+  comment         String?   @map("Comment") @db.Text
+  updatedDate     DateTime  @default(now()) @map("UpdatedDate") @db.DateTime(0)
 
+  assignment      RatingAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  category        RatingCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("tblRatingResponse")
   @@index([assignmentId], map: "idx_assignment")
   @@index([categoryId], map: "idx_category")
-  @@map("tblRatingResponse")
 }
 
 model AdminReportsLog {
-  id         Int      @id @default(autoincrement()) @map("LogID")
-  adminEmail String   @map("AdminEmail") @db.VarChar(100)
-  reportType String?  @map("ReportType") @db.VarChar(200)
-  exportDate DateTime @default(now()) @map("ExportDate") @db.DateTime(0)
+  id              Int       @id @default(autoincrement()) @map("LogID")
+  adminEmail      String    @map("AdminEmail") @db.VarChar(100)
+  reportType      String?   @map("ReportType") @db.VarChar(200)
+  exportDate      DateTime  @default(now()) @map("ExportDate") @db.DateTime(0)
 
+  @@map("tblAdminReportsLog")
   @@index([adminEmail], map: "idx_admin_email")
   @@index([exportDate], map: "idx_export_date")
-  @@map("tblAdminReportsLog")
 }

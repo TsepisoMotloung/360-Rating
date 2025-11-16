@@ -25,26 +25,26 @@ export async function validateUser(
     }
 
     // Query tblUser using Prisma - Username contains the email
-    const user = await prisma.user.findFirst({
+    const user = await prisma.tblUser.findFirst({
       where: {
-        id: userId,
-        username: email,
+        UserID: userId,
+        Username: email,
       },
       select: {
-        id: true,
-        username: true,
+        UserID: true,
+        Username: true,
       },
     });
 
-    if (!user || !user.username) {
+    if (!user || !user.Username) {
       return { isValid: false };
     }
 
     return {
       isValid: true,
-      userId: user.id,
-      email: user.username,
-      isAdmin: user.username.toLowerCase() === ADMIN_EMAIL.toLowerCase(),
+      userId: user.UserID,
+      email: user.Username,
+      isAdmin: user.Username.toLowerCase() === ADMIN_EMAIL.toLowerCase(),
     };
   } catch (error) {
     console.error('User validation error:', error);

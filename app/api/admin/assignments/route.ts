@@ -76,14 +76,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Get UserIDs from emails - UserID is INT in tblUser
-    const rater = await prisma.user.findFirst({
-      where: { username: raterEmail },
-      select: { id: true },
+    const rater = await prisma.tblUser.findFirst({
+      where: { Username: raterEmail },
+      select: { UserID: true },
     });
 
-    const ratee = await prisma.user.findFirst({
-      where: { username: rateeEmail },
-      select: { id: true },
+    const ratee = await prisma.tblUser.findFirst({
+      where: { Username: rateeEmail },
+      select: { UserID: true },
     });
 
     if (!rater) {

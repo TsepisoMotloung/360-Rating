@@ -75,7 +75,7 @@ http://localhost:3000?uid=tmotloung&email=tmotloung@alliance.co.ls
 ```bash
 POST /api/admin/assignments
 {
-  "uid": "tmotloung",
+  "uid": "2291",
   "email": "tmotloung@alliance.co.ls",
   "assignments": [
     {
@@ -93,7 +93,7 @@ POST /api/admin/assignments
 ```bash
 POST /api/admin/periods
 {
-  "uid": "tmotloung",
+  "uid": "2291",
   "email": "tmotloung@alliance.co.ls",
   "periodName": "Q1 2025",
   "startDate": "2025-01-01",
