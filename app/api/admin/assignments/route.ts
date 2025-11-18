@@ -170,3 +170,35 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to delete assignment' }, { status: 500 });
   }
 }
+
+// PATCH - Update an assignment (e.g., relationship)
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { uid, email, assignmentId, relationship } = body;
+
+    const validation = await validateUser(uid ?? null, email ?? null);
+    if (!validation.isValid || !validation.isAdmin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!assignmentId) {
+      return NextResponse.json({ error: 'assignmentId required' }, { status: 400 });
+    }
+
+    const rel = typeof relationship === 'number' ? relationship : null;
+    if (!rel || rel < 1 || rel > 4) {
+      return NextResponse.json({ error: 'Invalid relationship (1-4)' }, { status: 400 });
+    }
+
+    const updated = await prisma.ratingAssignment.update({
+      where: { id: parseInt(String(assignmentId)) },
+      data: { relationship: rel },
+    });
+
+    return NextResponse.json({ success: true, assignmentId: updated.id });
+  } catch (error) {
+    console.error('Error updating assignment:', error);
+    return NextResponse.json({ error: 'Failed to update assignment' }, { status: 500 });
+  }
+}

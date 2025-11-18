@@ -41,6 +41,7 @@ function AssignmentsContent() {
   const { uid, email } = extractAuthParams(searchParams as any);
 
   const [loading, setLoading] = useState(true);
+  const [pageProgress, setPageProgress] = useState<number>(0);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [rateeGroups, setRateeGroups] = useState<RateeGroup[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -57,6 +58,9 @@ function AssignmentsContent() {
     type: null,
     count: 0,
   });
+  const [editingAssignmentId, setEditingAssignmentId] = useState<number | null>(null);
+  const [editingRelationship, setEditingRelationship] = useState<number>(1);
+  const [operationProgress, setOperationProgress] = useState<number>(0);
 
   useEffect(() => {
     if (!uid || !email) {
@@ -112,6 +116,8 @@ function AssignmentsContent() {
 
   const fetchAssignments = async () => {
     try {
+      setPageProgress(3);
+      const iv = setInterval(() => setPageProgress((p) => Math.min(97, p + Math.ceil(Math.random() * 6))), 300);
       const response = await fetch(`/api/admin/assignments?uid=${uid}&email=${email}`);
       if (!response.ok) {
         if (response.status === 401) {
@@ -125,6 +131,9 @@ function AssignmentsContent() {
       setAssignments(data.assignments);
       groupAssignments(data.assignments);
       setPeriodId(data.periodId);
+      clearInterval(iv);
+      setPageProgress(100);
+      setTimeout(() => setPageProgress(0), 400);
     } catch (error) {
       console.error('Error fetching assignments:', error);
       setMessage('Failed to load assignments');
@@ -181,6 +190,60 @@ function AssignmentsContent() {
       count: 1,
       assignmentId,
     });
+  };
+
+  const startProgress = () => {
+    setOperationProgress(3);
+    const iv = setInterval(() => {
+      setOperationProgress((p) => {
+        if (p >= 97) {
+          clearInterval(iv);
+          return p;
+        }
+        return p + Math.ceil(Math.random() * 6);
+      });
+    }, 300);
+    return iv;
+  };
+
+  const finishProgress = () => setOperationProgress(100);
+
+  const handleStartEdit = (assignmentId: number, currentRel?: number | null) => {
+    setEditingAssignmentId(assignmentId);
+    setEditingRelationship(currentRel ?? 1);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingAssignmentId(null);
+    setEditingRelationship(1);
+  };
+
+  const handleSaveRelationship = async (assignmentId: number) => {
+    if (!uid || !email) return router.push('/error-invalid-request');
+    const iv = startProgress();
+    try {
+      const res = await fetch('/api/admin/assignments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, email, assignmentId, relationship: editingRelationship }),
+      });
+      const data = await res.json();
+      finishProgress();
+      if (!res.ok) {
+        setMessage(data.error || 'Failed to update relationship');
+      } else {
+        setMessage('Relationship updated');
+        setEditingAssignmentId(null);
+        await fetchAssignments();
+      }
+    } catch (err) {
+      console.error('Failed to save relationship', err);
+      setMessage('Failed to update relationship');
+    } finally {
+      clearInterval(iv);
+      setTimeout(() => setMessage(''), 3000);
+      setOperationProgress(0);
+    }
   };
 
   const confirmSingleDelete = async () => {
@@ -562,6 +625,10 @@ function AssignmentsContent() {
                                 </span>
                               )}
                             </div>
+                            {/* explicit relationship text for clarity */}
+                            {rater.Relationship && editingAssignmentId !== rater.AssignmentID && (
+                              <div className="text-sm text-gray-600 mt-2">Rater relationship to Ratee: <strong>{['Peer','Supervisor','Manager','Subordinate'][rater.Relationship - 1]}</strong></div>
+                            )}
                             <div className="flex items-center gap-2 mt-2">
                               <span
                                 className={`inline-block px-3 py-1 rounded text-xs font-semibold ${
@@ -579,13 +646,35 @@ function AssignmentsContent() {
                               )}
                             </div>
                           </div>
-                          <button
-                            onClick={() => handleDeleteAssignment(rater.AssignmentID)}
-                            className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all hover:scale-110"
-                            title="Delete this assignment"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {editingAssignmentId === rater.AssignmentID ? (
+                              <div className="flex items-center gap-2">
+                                <select
+                                  value={editingRelationship}
+                                  onChange={(e) => setEditingRelationship(parseInt(e.target.value, 10))}
+                                  className="px-2 py-1 border border-gray-200 rounded"
+                                >
+                                  <option value={1}>Peer</option>
+                                  <option value={2}>Supervisor</option>
+                                  <option value={3}>Manager</option>
+                                  <option value={4}>Subordinate</option>
+                                </select>
+                                <button onClick={() => handleSaveRelationship(rater.AssignmentID)} className="px-2 py-1 bg-green-600 text-white rounded">Save</button>
+                                <button onClick={handleCancelEdit} className="px-2 py-1 bg-gray-100 rounded">Cancel</button>
+                              </div>
+                            ) : (
+                              <>
+                                <button onClick={() => handleStartEdit(rater.AssignmentID, rater.Relationship)} className="px-2 py-1 bg-blue-50 text-blue-700 rounded">Edit</button>
+                                <button
+                                  onClick={() => handleDeleteAssignment(rater.AssignmentID)}
+                                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all hover:scale-110"
+                                  title="Delete this assignment"
+                                >
+                                  <Trash2 className="w-5 h-5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
