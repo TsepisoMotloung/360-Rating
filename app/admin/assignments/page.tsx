@@ -3,18 +3,27 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2, Plus, Trash2, Search, ChevronDown, ChevronUp, AlertCircle, CheckCircle } from 'lucide-react';
-import { extractAuthParams, encodeAuthToken } from '@/lib/params';
+import { extractAuthParams } from '@/lib/params';
 
 interface Assignment {
   AssignmentID: number;
+  RaterUserID?: number;
   RaterEmail: string;
+  RaterFName?: string | null;
+  RaterSurname?: string | null;
+  RateeUserID?: number;
   RateeEmail: string;
+  RateeFName?: string | null;
+  RateeSurname?: string | null;
+  Relationship?: number | null;
   IsCompleted: boolean;
   DateCompleted: string | null;
 }
 
 interface RateeGroup {
   rateeEmail: string;
+  rateeFName?: string | null;
+  rateeSurname?: string | null;
   raters: Assignment[];
   completedCount: number;
 }
@@ -32,6 +41,7 @@ function AssignmentsContent() {
   const { uid, email } = extractAuthParams(searchParams as any);
 
   const [loading, setLoading] = useState(true);
+  const [pageProgress, setPageProgress] = useState<number>(0);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [rateeGroups, setRateeGroups] = useState<RateeGroup[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,6 +49,7 @@ function AssignmentsContent() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newRaterEmail, setNewRaterEmail] = useState('');
   const [newRateeEmail, setNewRateeEmail] = useState('');
+  const [newRelationship, setNewRelationship] = useState<number>(1);
   const [periodId, setPeriodId] = useState<number | null>(null);
   const [expandedRatee, setExpandedRatee] = useState<string | null>(null);
   const [selectedAssignments, setSelectedAssignments] = useState<Set<number>>(new Set());
@@ -47,6 +58,9 @@ function AssignmentsContent() {
     type: null,
     count: 0,
   });
+  const [editingAssignmentId, setEditingAssignmentId] = useState<number | null>(null);
+  const [editingRelationship, setEditingRelationship] = useState<number>(1);
+  const [operationProgress, setOperationProgress] = useState<number>(0);
 
   useEffect(() => {
     if (!uid || !email) {
@@ -76,9 +90,18 @@ function AssignmentsContent() {
       if (!groups[assignment.RateeEmail]) {
         groups[assignment.RateeEmail] = {
           rateeEmail: assignment.RateeEmail,
+          rateeFName: assignment.RateeFName || null,
+          rateeSurname: assignment.RateeSurname || null,
           raters: [],
           completedCount: 0,
         };
+      }
+      // ensure we capture name info if available
+      if (!groups[assignment.RateeEmail].rateeFName && assignment.RateeFName) {
+        groups[assignment.RateeEmail].rateeFName = assignment.RateeFName;
+      }
+      if (!groups[assignment.RateeEmail].rateeSurname && assignment.RateeSurname) {
+        groups[assignment.RateeEmail].rateeSurname = assignment.RateeSurname;
       }
       groups[assignment.RateeEmail].raters.push(assignment);
       if (assignment.IsCompleted) {
@@ -93,6 +116,8 @@ function AssignmentsContent() {
 
   const fetchAssignments = async () => {
     try {
+      setPageProgress(3);
+      const iv = setInterval(() => setPageProgress((p) => Math.min(97, p + Math.ceil(Math.random() * 6))), 300);
       const response = await fetch(`/api/admin/assignments?uid=${uid}&email=${email}`);
       if (!response.ok) {
         if (response.status === 401) {
@@ -106,6 +131,9 @@ function AssignmentsContent() {
       setAssignments(data.assignments);
       groupAssignments(data.assignments);
       setPeriodId(data.periodId);
+      clearInterval(iv);
+      setPageProgress(100);
+      setTimeout(() => setPageProgress(0), 400);
     } catch (error) {
       console.error('Error fetching assignments:', error);
       setMessage('Failed to load assignments');
@@ -115,7 +143,7 @@ function AssignmentsContent() {
   };
 
   const handleAddAssignment = async () => {
-    if (!newRaterEmail || !newRateeEmail || !periodId) {
+    if (!newRaterEmail || !newRateeEmail || !periodId || !newRelationship) {
       setMessage('Please fill all fields');
       setTimeout(() => setMessage(''), 3000);
       return;
@@ -126,10 +154,12 @@ function AssignmentsContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          auth: encodeAuthToken(uid, email),
+          uid,
+          email,
           raterEmail: newRaterEmail,
           rateeEmail: newRateeEmail,
           periodId,
+          relationship: newRelationship,
         }),
       });
 
@@ -139,6 +169,7 @@ function AssignmentsContent() {
         setMessage('Assignment created successfully!');
         setNewRaterEmail('');
         setNewRateeEmail('');
+        setNewRelationship(1);
         setShowAddForm(false);
         await fetchAssignments();
       } else {
@@ -161,12 +192,66 @@ function AssignmentsContent() {
     });
   };
 
+  const startProgress = () => {
+    setOperationProgress(3);
+    const iv = setInterval(() => {
+      setOperationProgress((p) => {
+        if (p >= 97) {
+          clearInterval(iv);
+          return p;
+        }
+        return p + Math.ceil(Math.random() * 6);
+      });
+    }, 300);
+    return iv;
+  };
+
+  const finishProgress = () => setOperationProgress(100);
+
+  const handleStartEdit = (assignmentId: number, currentRel?: number | null) => {
+    setEditingAssignmentId(assignmentId);
+    setEditingRelationship(currentRel ?? 1);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingAssignmentId(null);
+    setEditingRelationship(1);
+  };
+
+  const handleSaveRelationship = async (assignmentId: number) => {
+    if (!uid || !email) return router.push('/error-invalid-request');
+    const iv = startProgress();
+    try {
+      const res = await fetch('/api/admin/assignments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, email, assignmentId, relationship: editingRelationship }),
+      });
+      const data = await res.json();
+      finishProgress();
+      if (!res.ok) {
+        setMessage(data.error || 'Failed to update relationship');
+      } else {
+        setMessage('Relationship updated');
+        setEditingAssignmentId(null);
+        await fetchAssignments();
+      }
+    } catch (err) {
+      console.error('Failed to save relationship', err);
+      setMessage('Failed to update relationship');
+    } finally {
+      clearInterval(iv);
+      setTimeout(() => setMessage(''), 3000);
+      setOperationProgress(0);
+    }
+  };
+
   const confirmSingleDelete = async () => {
     if (!confirmDialog.assignmentId) return;
 
     try {
       const response = await fetch(
-        `/api/admin/assignments?auth=${encodeURIComponent(encodeAuthToken(uid, email) || '')}&assignmentId=${confirmDialog.assignmentId}`,
+        `/api/admin/assignments?uid=${uid}&email=${email}&assignmentId=${confirmDialog.assignmentId}`,
         { method: 'DELETE' }
       );
 
@@ -232,7 +317,7 @@ function AssignmentsContent() {
       for (let i = 0; i < ids.length; i++) {
         try {
           const response = await fetch(
-            `/api/admin/assignments?auth=${encodeURIComponent(encodeAuthToken(uid, email) || '')}&assignmentId=${ids[i]}`,
+            `/api/admin/assignments?uid=${uid}&email=${email}&assignmentId=${ids[i]}`,
             { method: 'DELETE' }
           );
           if (response.ok) {
@@ -281,7 +366,7 @@ function AssignmentsContent() {
               <p className="text-gray-600">Organize and manage rating assignments efficiently</p>
             </div>
             <button
-              onClick={() => router.push(`/admin?auth=${encodeURIComponent(encodeAuthToken(uid, email) || '')}`)}
+              onClick={() => router.push(`/admin?uid=${uid}&email=${email}`)}
               className="px-6 py-3 bg-white text-gray-700 border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 font-medium transition-all"
             >
               ← Back to Dashboard
@@ -386,6 +471,21 @@ function AssignmentsContent() {
                   />
                 </div>
               </div>
+              <div className="grid md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Relationship</label>
+                  <select
+                    value={newRelationship}
+                    onChange={(e) => setNewRelationship(parseInt(e.target.value, 10))}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  >
+                    <option value={1}>Peer</option>
+                    <option value={2}>Supervisor</option>
+                    <option value={3}>Manager</option>
+                    <option value={4}>Subordinate</option>
+                  </select>
+                </div>
+              </div>
               <div className="flex gap-4 mt-4">
                 <button
                   onClick={handleAddAssignment}
@@ -465,7 +565,7 @@ function AssignmentsContent() {
                     />
                     <div>
                       <div className="flex items-center gap-3">
-                        <h3 className="font-semibold text-gray-900 text-lg">{group.rateeEmail}</h3>
+                        <h3 className="font-semibold text-gray-900 text-lg">{`${(group.rateeFName || '').trim()} ${(group.rateeSurname || '').trim()} (${group.rateeEmail})`}</h3>
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
                           Ratee
                         </span>
@@ -515,11 +615,20 @@ function AssignmentsContent() {
                           />
                           <div className="flex-1 ml-4">
                             <div className="flex items-center gap-3">
-                              <p className="text-sm font-medium text-gray-900">{rater.RaterEmail}</p>
+                              <p className="text-sm font-medium text-gray-900">{`${(rater.RaterFName || '').trim()} ${(rater.RaterSurname || '').trim()} (${rater.RaterEmail})`}</p>
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-700">
                                 Rater
                               </span>
+                              {rater.Relationship && (
+                                <span className="inline-flex items-center ml-2 px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700">
+                                  {['Peer','Supervisor','Manager','Subordinate'][rater.Relationship - 1]}
+                                </span>
+                              )}
                             </div>
+                            {/* explicit relationship text for clarity */}
+                            {rater.Relationship && editingAssignmentId !== rater.AssignmentID && (
+                              <div className="text-sm text-gray-600 mt-2">Rater relationship to Ratee: <strong>{['Peer','Supervisor','Manager','Subordinate'][rater.Relationship - 1]}</strong></div>
+                            )}
                             <div className="flex items-center gap-2 mt-2">
                               <span
                                 className={`inline-block px-3 py-1 rounded text-xs font-semibold ${
@@ -537,13 +646,35 @@ function AssignmentsContent() {
                               )}
                             </div>
                           </div>
-                          <button
-                            onClick={() => handleDeleteAssignment(rater.AssignmentID)}
-                            className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all hover:scale-110"
-                            title="Delete this assignment"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {editingAssignmentId === rater.AssignmentID ? (
+                              <div className="flex items-center gap-2">
+                                <select
+                                  value={editingRelationship}
+                                  onChange={(e) => setEditingRelationship(parseInt(e.target.value, 10))}
+                                  className="px-2 py-1 border border-gray-200 rounded"
+                                >
+                                  <option value={1}>Peer</option>
+                                  <option value={2}>Supervisor</option>
+                                  <option value={3}>Manager</option>
+                                  <option value={4}>Subordinate</option>
+                                </select>
+                                <button onClick={() => handleSaveRelationship(rater.AssignmentID)} className="px-2 py-1 bg-green-600 text-white rounded">Save</button>
+                                <button onClick={handleCancelEdit} className="px-2 py-1 bg-gray-100 rounded">Cancel</button>
+                              </div>
+                            ) : (
+                              <>
+                                <button onClick={() => handleStartEdit(rater.AssignmentID, rater.Relationship)} className="px-2 py-1 bg-blue-50 text-blue-700 rounded">Edit</button>
+                                <button
+                                  onClick={() => handleDeleteAssignment(rater.AssignmentID)}
+                                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all hover:scale-110"
+                                  title="Delete this assignment"
+                                >
+                                  <Trash2 className="w-5 h-5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

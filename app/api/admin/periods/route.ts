@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
-import { extractAuthParams, decodeAuthToken } from '@/lib/params';
+import { extractAuthParams } from '@/lib/params';
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,12 +37,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    let { uid, email, periodName, startDate, endDate, isActive, auth } = body as any;
-    if (auth && (!uid || !email)) {
-      const parsed = decodeAuthToken(String(auth));
-      uid = parsed.uid ?? uid;
-      email = parsed.email ?? email;
-    }
+    const { uid, email, periodName, startDate, endDate, isActive } = body;
 
     const validation = await validateUser(uid, email);
     if (!validation.isValid || !validation.isAdmin) {
@@ -86,12 +81,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    let { uid, email, periodId, isActive, auth } = body as any;
-    if (auth && (!uid || !email)) {
-      const parsed = decodeAuthToken(String(auth));
-      uid = parsed.uid ?? uid;
-      email = parsed.email ?? email;
-    }
+    const { uid, email, periodId, isActive } = body;
 
     const validation = await validateUser(uid, email);
     if (!validation.isValid || !validation.isAdmin) {

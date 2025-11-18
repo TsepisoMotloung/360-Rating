@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2, UserPlus, Trash2 } from 'lucide-react';
-import { extractAuthParams, encodeAuthToken } from '@/lib/params';
+import { extractAuthParams } from '@/lib/params';
 
 interface AdminRow {
   AdministratorID: number;
@@ -34,8 +34,7 @@ export default function AdminsPage() {
   const fetchAdmins = async () => {
     setLoading(true);
     try {
-      const auth = encodeAuthToken(uid, email);
-      const res = await fetch(`/api/admin/admins?auth=${encodeURIComponent(auth || '')}`);
+      const res = await fetch(`/api/admin/admins?uid=${uid}&email=${email}`);
       if (!res.ok) {
         if (res.status === 401) {
           router.push('/error-access-denied');
@@ -62,7 +61,7 @@ export default function AdminsPage() {
     }
 
     try {
-      const res = await fetch(`/api/admin/admins?auth=${encodeURIComponent(encodeAuthToken(uid, email) || '')}`, {
+      const res = await fetch(`/api/admin/admins?uid=${uid}&email=${email}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: newEmail, description: newDesc }),
@@ -88,7 +87,7 @@ export default function AdminsPage() {
     if (!confirm(`Remove admin ${targetEmail}? This cannot be undone.`)) return;
 
     try {
-      const res = await fetch(`/api/admin/admins?auth=${encodeURIComponent(encodeAuthToken(uid, email) || '')}`, {
+      const res = await fetch(`/api/admin/admins?uid=${uid}&email=${email}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: targetEmail }),
@@ -127,7 +126,7 @@ export default function AdminsPage() {
             </div>
             <div>
               <button
-                onClick={() => router.push(`/admin?auth=${encodeURIComponent(encodeAuthToken(uid, email) || '')}`)}
+                onClick={() => router.push(`/admin?uid=${uid}&email=${email}`)}
                 className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-100"
               >
                 Back

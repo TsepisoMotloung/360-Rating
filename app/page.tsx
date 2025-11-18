@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
-import { extractAuthParams, encodeAuthToken } from '@/lib/params';
+import { extractAuthParams } from '@/lib/params';
 
 function HomeContent() {
   const router = useRouter();
@@ -18,8 +18,9 @@ function HomeContent() {
       }
 
       try {
-        const auth = encodeAuthToken(uid, email);
-        const res = await fetch(`/api/auth/resolve?auth=${encodeURIComponent(auth || '')}`);
+        const res = await fetch(`/api/auth/resolve?uid=${encodeURIComponent(
+          uid
+        )}&email=${encodeURIComponent(email)}`);
         if (!res.ok) {
           router.push('/error-session-expired');
           return;
@@ -29,11 +30,10 @@ function HomeContent() {
         const finalUid = data.canonicalUid ?? uid;
         const finalEmail = data.canonicalEmail ?? email;
 
-        const encoded = encodeAuthToken(String(finalUid), String(finalEmail));
         if ((finalEmail || '').toLowerCase() === 'tmotloung@alliance.co.ls') {
-          router.push(`/admin?auth=${encodeURIComponent(encoded || '')}`);
+          router.push(`/admin?uid=${finalUid}&email=${finalEmail}`);
         } else {
-          router.push(`/rater?auth=${encodeURIComponent(encoded || '')}`);
+          router.push(`/rater?uid=${finalUid}&email=${finalEmail}`);
         }
       } catch (err) {
         console.error('Redirect error:', err);

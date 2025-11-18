@@ -1,22 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
-import { decodeAuthToken } from '@/lib/params';
 
-type Assignment = { raterEmail: string; rateeEmail: string };
+type Assignment = { raterEmail: string; rateeEmail: string; relationship?: number };
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    let { uid, email } = (body as any) || {};
-    const { auth } = (body as any) || {};
-    if (auth && (!uid || !email)) {
-      const parsed = decodeAuthToken(String(auth));
-      uid = parsed.uid ?? uid;
-      email = parsed.email ?? email;
-    }
-
-    const { assignments, periodId } = body as {
+    const { uid, email, assignments, periodId } = body as {
+      uid?: string;
+      email?: string;
       assignments?: Assignment[];
       periodId?: number;
     };
@@ -51,6 +44,13 @@ export async function POST(request: NextRequest) {
       const a = assignments[i];
       if (!a || !a.raterEmail || !a.rateeEmail) {
         results.errors.push({ index: i, reason: 'Invalid item format' });
+        continue;
+      }
+
+      // relationship must be provided (1-4)
+      const rel = typeof a.relationship === 'number' ? a.relationship : null;
+      if (!rel || rel < 1 || rel > 4) {
+        results.errors.push({ index: i, reason: 'Missing or invalid relationship (1-4)' });
         continue;
       }
 
@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
           rateeUserId: rateeVal.userId,
           rateeEmail: a.rateeEmail,
           isCompleted: false,
+          relationship: rel,
         },
       });
 

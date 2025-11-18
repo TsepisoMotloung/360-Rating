@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { validateUser } from '@/lib/auth';
-import { extractAuthParams } from '@/lib/params';
 
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const { uid, email } = extractAuthParams(url.searchParams as any);
+    const uid = url.searchParams.get('uid');
+    const email = url.searchParams.get('email');
 
     const validation = await validateUser(uid, email);
     if (!validation.isValid) {

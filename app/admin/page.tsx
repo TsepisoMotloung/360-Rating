@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Loader2, Users, CheckCircle, Clock, TrendingUp } from 'lucide-react';
-import { extractAuthParams, encodeAuthToken } from '@/lib/params';
+import { extractAuthParams } from '@/lib/params';
 
 function AdminContent() {
   const searchParams = useSearchParams();
@@ -29,8 +29,7 @@ function AdminContent() {
 
   const fetchDashboardData = async () => {
     try {
-      const auth = encodeAuthToken(uid, email);
-      const response = await fetch(`/api/admin/dashboard?auth=${encodeURIComponent(auth || '')}`);
+      const response = await fetch(`/api/admin/dashboard?uid=${uid}&email=${email}`);
       if (!response.ok) {
         if (response.status === 401) {
           router.push('/error-access-denied');
@@ -90,29 +89,29 @@ function AdminContent() {
                   Rating Period: <span className="font-medium">{period.PeriodName}</span>
                 </p>
               )}
-              <p className="text-sm text-gray-500 mt-1">Logged in: {encodeAuthToken(uid, email)?.slice(0, 12) ?? '●●●'}</p>
+              <p className="text-sm text-gray-500 mt-1">Logged in as: {email}</p>
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => router.push(`/admin/assignments?auth=${encodeURIComponent(encodeAuthToken(uid, email) || '')}`)}
+                onClick={() => router.push(`/admin/assignments?uid=${uid}&email=${email}`)}
                 className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
               >
                 Manage Assignments
               </button>
               <button
-                onClick={() => router.push(`/admin/import?auth=${encodeURIComponent(encodeAuthToken(uid, email) || '')}`)}
+                onClick={() => router.push(`/admin/import?uid=${uid}&email=${email}`)}
                 className="px-6 py-2 bg-red-100 text-black rounded-lg hover:bg-secondary-700 transition-colors"
               >
                 Import Assignments
               </button>
               <button
-                onClick={() => router.push(`/admin/reports?auth=${encodeURIComponent(encodeAuthToken(uid, email) || '')}`)}
+                onClick={() => router.push(`/admin/reports?uid=${uid}&email=${email}`)}
                 className="px-6 py-2 bg-white text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
               >
                 Generate Reports
               </button>
               <button
-                onClick={() => router.push(`/admin/admins?auth=${encodeURIComponent(encodeAuthToken(uid, email) || '')}`)}
+                onClick={() => router.push(`/admin/admins?uid=${uid}&email=${email}`)}
                 className="px-6 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Manage Admins

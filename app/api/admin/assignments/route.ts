@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
-import { extractAuthParams, decodeAuthToken } from '@/lib/params';
+import { extractAuthParams } from '@/lib/params';
 
 // GET all assignments
 export async function GET(request: NextRequest) {
@@ -32,6 +32,10 @@ export async function GET(request: NextRequest) {
 
     const assignments = await prisma.ratingAssignment.findMany({
       where: { ratingPeriodId: targetPeriodId },
+      include: {
+        ratee: { select: { FName: true, Surname: true, Username: true } },
+        rater: { select: { FName: true, Surname: true, Username: true } },
+      },
       orderBy: [
         { rateeEmail: 'asc' },
         { raterEmail: 'asc' },
@@ -43,8 +47,13 @@ export async function GET(request: NextRequest) {
         AssignmentID: a.id,
         RaterUserID: a.raterUserId,
         RaterEmail: a.raterEmail,
+        RaterFName: a.rater?.FName || null,
+        RaterSurname: a.rater?.Surname || null,
         RateeUserID: a.rateeUserId,
         RateeEmail: a.rateeEmail,
+        RateeFName: a.ratee?.FName || null,
+        RateeSurname: a.ratee?.Surname || null,
+        Relationship: a.relationship || null,
         IsCompleted: a.isCompleted,
         DateCompleted: a.dateCompleted,
         RatingPeriodID: a.ratingPeriodId,
@@ -61,12 +70,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    let { uid, email, raterEmail, rateeEmail, periodId, auth } = body as any;
-    if (auth && (!uid || !email)) {
-      const parsed = decodeAuthToken(String(auth));
-      uid = parsed.uid ?? uid;
-      email = parsed.email ?? email;
-    }
+    const { uid, email, raterEmail, rateeEmail, periodId, relationship } = body;
 
     const validation = await validateUser(uid, email);
     if (!validation.isValid || !validation.isAdmin) {
@@ -122,6 +126,7 @@ export async function POST(request: NextRequest) {
         rateeUserId: rateeValidation.userId,
         rateeEmail,
         isCompleted: false,
+        relationship: typeof relationship === 'number' ? relationship : undefined,
       },
     });
 
@@ -163,5 +168,37 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error('Error deleting assignment:', error);
     return NextResponse.json({ error: 'Failed to delete assignment' }, { status: 500 });
+  }
+}
+
+// PATCH - Update an assignment (e.g., relationship)
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { uid, email, assignmentId, relationship } = body;
+
+    const validation = await validateUser(uid ?? null, email ?? null);
+    if (!validation.isValid || !validation.isAdmin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!assignmentId) {
+      return NextResponse.json({ error: 'assignmentId required' }, { status: 400 });
+    }
+
+    const rel = typeof relationship === 'number' ? relationship : null;
+    if (!rel || rel < 1 || rel > 4) {
+      return NextResponse.json({ error: 'Invalid relationship (1-4)' }, { status: 400 });
+    }
+
+    const updated = await prisma.ratingAssignment.update({
+      where: { id: parseInt(String(assignmentId)) },
+      data: { relationship: rel },
+    });
+
+    return NextResponse.json({ success: true, assignmentId: updated.id });
+  } catch (error) {
+    console.error('Error updating assignment:', error);
+    return NextResponse.json({ error: 'Failed to update assignment' }, { status: 500 });
   }
 }

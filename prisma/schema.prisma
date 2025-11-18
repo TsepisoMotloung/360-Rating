@@ -242,6 +242,7 @@ model RatingAssignment {
   rater          tblUser          @relation("RaterAssignments", fields: [raterUserId], references: [UserID], onDelete: Cascade)
   period         RatingPeriod     @relation(fields: [ratingPeriodId], references: [id], onDelete: Cascade)
   responses      RatingResponse[]
+  relationship   Int?             @map("RelationshipType")
 
   @@unique([ratingPeriodId, raterUserId, rateeUserId], name: "unique_assignment", map: "unique_assignment")
   @@index([raterUserId, ratingPeriodId], map: "idx_rater_period")
