@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
 
-type Assignment = { raterEmail: string; rateeEmail: string };
+type Assignment = { raterEmail: string; rateeEmail: string; relationship?: number };
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,6 +47,13 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
+      // relationship must be provided (1-4)
+      const rel = typeof a.relationship === 'number' ? a.relationship : null;
+      if (!rel || rel < 1 || rel > 4) {
+        results.errors.push({ index: i, reason: 'Missing or invalid relationship (1-4)' });
+        continue;
+      }
+
       // Resolve canonical users
       const raterVal = await validateUser(null, a.raterEmail);
       const rateeVal = await validateUser(null, a.rateeEmail);
@@ -83,6 +90,7 @@ export async function POST(request: NextRequest) {
           rateeUserId: rateeVal.userId,
           rateeEmail: a.rateeEmail,
           isCompleted: false,
+          relationship: rel,
         },
       });
 

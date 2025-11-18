@@ -32,6 +32,10 @@ export async function GET(request: NextRequest) {
 
     const assignments = await prisma.ratingAssignment.findMany({
       where: { ratingPeriodId: targetPeriodId },
+      include: {
+        ratee: { select: { FName: true, Surname: true, Username: true } },
+        rater: { select: { FName: true, Surname: true, Username: true } },
+      },
       orderBy: [
         { rateeEmail: 'asc' },
         { raterEmail: 'asc' },
@@ -43,8 +47,13 @@ export async function GET(request: NextRequest) {
         AssignmentID: a.id,
         RaterUserID: a.raterUserId,
         RaterEmail: a.raterEmail,
+        RaterFName: a.rater?.FName || null,
+        RaterSurname: a.rater?.Surname || null,
         RateeUserID: a.rateeUserId,
         RateeEmail: a.rateeEmail,
+        RateeFName: a.ratee?.FName || null,
+        RateeSurname: a.ratee?.Surname || null,
+        Relationship: a.relationship || null,
         IsCompleted: a.isCompleted,
         DateCompleted: a.dateCompleted,
         RatingPeriodID: a.ratingPeriodId,
@@ -61,7 +70,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { uid, email, raterEmail, rateeEmail, periodId } = body;
+    const { uid, email, raterEmail, rateeEmail, periodId, relationship } = body;
 
     const validation = await validateUser(uid, email);
     if (!validation.isValid || !validation.isAdmin) {
@@ -117,6 +126,7 @@ export async function POST(request: NextRequest) {
         rateeUserId: rateeValidation.userId,
         rateeEmail,
         isCompleted: false,
+        relationship: typeof relationship === 'number' ? relationship : undefined,
       },
     });
 

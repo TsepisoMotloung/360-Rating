@@ -11,7 +11,7 @@ interface RatingScaleProps {
 
 const RatingScale: React.FC<RatingScaleProps> = ({ value, onChange, disabled = false }) => {
   const ratings = [1, 2, 3, 4, 5];
-  const labels = ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+  const labels = ['Poor', 'Partial', 'Satisfactory', 'Good', 'Excellent'];
 
   return (
     <div className="flex flex-col gap-4">

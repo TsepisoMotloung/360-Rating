@@ -23,6 +23,8 @@ interface Assignment {
   assignmentId: number;
   rateeUserId: string;
   rateeEmail: string;
+  rateeFName?: string | null;
+  rateeSurname?: string | null;
   isCompleted: boolean;
   dateCompleted: string | null;
   ratings: Rating[];
@@ -267,7 +269,7 @@ function RaterContent() {
             {assignments.map(assignment => (
               <Accordion
                 key={assignment.assignmentId}
-                title={assignment.rateeEmail}
+                title={`${(assignment.rateeFName || '').trim()} ${(assignment.rateeSurname || '').trim()} (${assignment.rateeEmail})`}
                 isCompleted={assignment.isCompleted}
               >
                 <div className="space-y-6">
