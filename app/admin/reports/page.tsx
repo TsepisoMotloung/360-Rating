@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2, Download, FileText } from 'lucide-react';
-import { extractAuthParams } from '@/lib/params';
+import { extractAuthParams, encodeAuthToken } from '@/lib/params';
 
 interface Period {
   RatingPeriodID: number;
@@ -34,7 +34,8 @@ export default function AdminReportsPage() {
 
   const fetchPeriods = async () => {
     try {
-      const res = await fetch(`/api/admin/periods?uid=${uid}&email=${email}`);
+      const auth = encodeAuthToken(uid, email);
+      const res = await fetch(`/api/admin/periods?auth=${encodeURIComponent(auth || '')}`);
       if (!res.ok) {
         if (res.status === 401) {
           router.push('/error-access-denied');
@@ -66,8 +67,9 @@ export default function AdminReportsPage() {
 
     try {
       setMessage('Generating report...');
+      const auth = encodeAuthToken(uid, email);
       const res = await fetch(
-        `/api/admin/reports?uid=${uid}&email=${email}&type=${reportType}&periodId=${selectedPeriod}`
+        `/api/admin/reports?auth=${encodeURIComponent(auth || '')}&type=${reportType}&periodId=${selectedPeriod}`
       );
 
       if (!res.ok) {
@@ -125,7 +127,7 @@ export default function AdminReportsPage() {
             </div>
             <div>
               <button
-                onClick={() => router.push(`/admin?uid=${uid}&email=${email}`)}
+                onClick={() => router.push(`/admin?auth=${encodeURIComponent(encodeAuthToken(uid, email) || '')}`)}
                 className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-100"
               >
                 Back
@@ -193,7 +195,7 @@ export default function AdminReportsPage() {
               Generate & Download
             </button>
             <button
-              onClick={() => router.push(`/admin?uid=${uid}&email=${email}`)}
+              onClick={() => router.push(`/admin?auth=${encodeURIComponent(encodeAuthToken(uid, email) || '')}`)}
               className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-100"
             >
               Cancel

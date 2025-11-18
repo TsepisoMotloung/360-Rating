@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { extractAuthParams } from '@/lib/params';
+import { encodeAuthToken } from '@/lib/params';
 import Accordion from '@/components/Accordion';
 import RatingScale from '@/components/RatingScale';
 import { Loader2, Send } from 'lucide-react';
@@ -23,8 +24,6 @@ interface Assignment {
   assignmentId: number;
   rateeUserId: string;
   rateeEmail: string;
-  rateeFName?: string | null;
-  rateeSurname?: string | null;
   isCompleted: boolean;
   dateCompleted: string | null;
   ratings: Rating[];
@@ -60,7 +59,8 @@ function RaterContent() {
 
   const fetchAssignments = async () => {
     try {
-      const response = await fetch(`/api/rater/assignments?uid=${uid}&email=${email}`);
+      const auth = encodeAuthToken(uid, email);
+      const response = await fetch(`/api/rater/assignments?auth=${encodeURIComponent(auth || '')}`);
       if (!response.ok) {
         if (response.status === 401) {
           router.push('/error-access-denied');
@@ -133,12 +133,12 @@ function RaterContent() {
         value,
       }));
 
-      const response = await fetch('/api/rater/rating', {
+      const auth = encodeAuthToken(uid, email);
+      const response = await fetch(`/api/rater/rating`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          uid,
-          email,
+          auth: encodeAuthToken(uid, email),
           assignmentId,
           ratings,
           comment: data.comment,
@@ -189,7 +189,7 @@ function RaterContent() {
       const response = await fetch('/api/rater/submit-all', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid, email, submissions }),
+        body: JSON.stringify({ auth: encodeAuthToken(uid, email), submissions }),
       });
 
       if (response.ok) {
@@ -227,7 +227,7 @@ function RaterContent() {
               Rating Period: <span className="font-medium">{period.name}</span>
             </p>
           )}
-          <p className="text-sm text-gray-500 mt-1">Logged in as: {email}</p>
+          <p className="text-sm text-gray-500 mt-1">Logged in: {encodeAuthToken(uid, email)?.slice(0, 12) ?? '●●●'}</p>
         </div>
 
         {/* Message */}
@@ -269,7 +269,7 @@ function RaterContent() {
             {assignments.map(assignment => (
               <Accordion
                 key={assignment.assignmentId}
-                title={`${(assignment.rateeFName || '').trim()} ${(assignment.rateeSurname || '').trim()} (${assignment.rateeEmail})`}
+                title={assignment.rateeEmail}
                 isCompleted={assignment.isCompleted}
               >
                 <div className="space-y-6">

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import TopNavLoader from '@/components/TopNavLoader'
 
 export const metadata: Metadata = {
   title: '360° Rating System',
@@ -13,7 +14,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <TopNavLoader />
+        {children}
+      </body>
     </html>
   )
 }

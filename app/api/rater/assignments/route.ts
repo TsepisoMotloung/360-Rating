@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Get assignments for this rater with existing ratings and ratee user info
+    // Get assignments for this rater with existing ratings
     const assignments = await prisma.ratingAssignment.findMany({
       where: {
         raterUserId: validation.userId,
@@ -59,13 +59,6 @@ export async function GET(request: NextRequest) {
             comment: true,
           },
         },
-        ratee: {
-          select: {
-            FName: true,
-            Surname: true,
-            Username: true,
-          },
-        },
       },
       orderBy: {
         rateeEmail: 'asc',
@@ -77,8 +70,6 @@ export async function GET(request: NextRequest) {
       assignmentId: assignment.id,
       rateeUserId: assignment.rateeUserId,
       rateeEmail: assignment.rateeEmail,
-      rateeFName: assignment.ratee?.FName || null,
-      rateeSurname: assignment.ratee?.Surname || null,
       isCompleted: assignment.isCompleted,
       dateCompleted: assignment.dateCompleted,
       ratings: assignment.responses.map((r) => ({
