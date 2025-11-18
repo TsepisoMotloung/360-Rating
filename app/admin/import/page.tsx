@@ -60,6 +60,7 @@ export default function AdminImportPage() {
         const items = parsed
           .filter((it: any) => it && it.raterEmail && it.rateeEmail)
           .map((it: any) => ({ raterEmail: it.raterEmail, rateeEmail: it.rateeEmail }));
+          .map((it: any) => ({ raterEmail: it.raterEmail, rateeEmail: it.rateeEmail }));
         setFileContent(items);
         setPreviewCount(items.length);
       } catch (err: any) {
@@ -109,6 +110,7 @@ export default function AdminImportPage() {
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
             <input type="file" accept="application/json" onChange={handleFileChange} />
+            <input type="file" accept="application/json" onChange={handleFileChange} />
           </div>
 
           <div className="mb-4">
@@ -120,6 +122,7 @@ export default function AdminImportPage() {
 
           <div className="flex gap-2">
             <button onClick={handleUpload} disabled={loading} className="px-4 py-2 bg-primary-600 text-white rounded-lg">
+              {loading ? 'Uploading...' : 'Upload and Import'}
               {loading ? 'Uploading...' : 'Upload and Import'}
             </button>
             <button onClick={() => { setFileContent([]); setPreviewCount(0); setResult(null); setError(null); }} className="px-4 py-2 bg-gray-100 rounded-lg">Clear</button>

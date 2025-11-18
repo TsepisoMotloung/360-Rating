@@ -93,8 +93,7 @@ function AssignmentsContent() {
 
   const fetchAssignments = async () => {
     try {
-      const auth = encodeAuthToken(uid, email);
-      const response = await fetch(`/api/admin/assignments?auth=${encodeURIComponent(auth || '')}`);
+      const response = await fetch(`/api/admin/assignments?uid=${uid}&email=${email}`);
       if (!response.ok) {
         if (response.status === 401) {
           router.push('/error-access-denied');
