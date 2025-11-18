@@ -7,14 +7,23 @@ import { extractAuthParams } from '@/lib/params';
 
 interface Assignment {
   AssignmentID: number;
+  RaterUserID?: number;
   RaterEmail: string;
+  RaterFName?: string | null;
+  RaterSurname?: string | null;
+  RateeUserID?: number;
   RateeEmail: string;
+  RateeFName?: string | null;
+  RateeSurname?: string | null;
+  Relationship?: number | null;
   IsCompleted: boolean;
   DateCompleted: string | null;
 }
 
 interface RateeGroup {
   rateeEmail: string;
+  rateeFName?: string | null;
+  rateeSurname?: string | null;
   raters: Assignment[];
   completedCount: number;
 }
@@ -39,6 +48,7 @@ function AssignmentsContent() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newRaterEmail, setNewRaterEmail] = useState('');
   const [newRateeEmail, setNewRateeEmail] = useState('');
+  const [newRelationship, setNewRelationship] = useState<number>(1);
   const [periodId, setPeriodId] = useState<number | null>(null);
   const [expandedRatee, setExpandedRatee] = useState<string | null>(null);
   const [selectedAssignments, setSelectedAssignments] = useState<Set<number>>(new Set());
@@ -76,9 +86,18 @@ function AssignmentsContent() {
       if (!groups[assignment.RateeEmail]) {
         groups[assignment.RateeEmail] = {
           rateeEmail: assignment.RateeEmail,
+          rateeFName: assignment.RateeFName || null,
+          rateeSurname: assignment.RateeSurname || null,
           raters: [],
           completedCount: 0,
         };
+      }
+      // ensure we capture name info if available
+      if (!groups[assignment.RateeEmail].rateeFName && assignment.RateeFName) {
+        groups[assignment.RateeEmail].rateeFName = assignment.RateeFName;
+      }
+      if (!groups[assignment.RateeEmail].rateeSurname && assignment.RateeSurname) {
+        groups[assignment.RateeEmail].rateeSurname = assignment.RateeSurname;
       }
       groups[assignment.RateeEmail].raters.push(assignment);
       if (assignment.IsCompleted) {
@@ -115,7 +134,7 @@ function AssignmentsContent() {
   };
 
   const handleAddAssignment = async () => {
-    if (!newRaterEmail || !newRateeEmail || !periodId) {
+    if (!newRaterEmail || !newRateeEmail || !periodId || !newRelationship) {
       setMessage('Please fill all fields');
       setTimeout(() => setMessage(''), 3000);
       return;
@@ -131,6 +150,7 @@ function AssignmentsContent() {
           raterEmail: newRaterEmail,
           rateeEmail: newRateeEmail,
           periodId,
+          relationship: newRelationship,
         }),
       });
 
@@ -140,6 +160,7 @@ function AssignmentsContent() {
         setMessage('Assignment created successfully!');
         setNewRaterEmail('');
         setNewRateeEmail('');
+        setNewRelationship(1);
         setShowAddForm(false);
         await fetchAssignments();
       } else {
@@ -387,6 +408,21 @@ function AssignmentsContent() {
                   />
                 </div>
               </div>
+              <div className="grid md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Relationship</label>
+                  <select
+                    value={newRelationship}
+                    onChange={(e) => setNewRelationship(parseInt(e.target.value, 10))}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  >
+                    <option value={1}>Peer</option>
+                    <option value={2}>Supervisor</option>
+                    <option value={3}>Manager</option>
+                    <option value={4}>Subordinate</option>
+                  </select>
+                </div>
+              </div>
               <div className="flex gap-4 mt-4">
                 <button
                   onClick={handleAddAssignment}
@@ -466,7 +502,7 @@ function AssignmentsContent() {
                     />
                     <div>
                       <div className="flex items-center gap-3">
-                        <h3 className="font-semibold text-gray-900 text-lg">{group.rateeEmail}</h3>
+                        <h3 className="font-semibold text-gray-900 text-lg">{`${(group.rateeFName || '').trim()} ${(group.rateeSurname || '').trim()} (${group.rateeEmail})`}</h3>
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
                           Ratee
                         </span>
@@ -516,10 +552,15 @@ function AssignmentsContent() {
                           />
                           <div className="flex-1 ml-4">
                             <div className="flex items-center gap-3">
-                              <p className="text-sm font-medium text-gray-900">{rater.RaterEmail}</p>
+                              <p className="text-sm font-medium text-gray-900">{`${(rater.RaterFName || '').trim()} ${(rater.RaterSurname || '').trim()} (${rater.RaterEmail})`}</p>
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-700">
                                 Rater
                               </span>
+                              {rater.Relationship && (
+                                <span className="inline-flex items-center ml-2 px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700">
+                                  {['Peer','Supervisor','Manager','Subordinate'][rater.Relationship - 1]}
+                                </span>
+                              )}
                             </div>
                             <div className="flex items-center gap-2 mt-2">
                               <span
