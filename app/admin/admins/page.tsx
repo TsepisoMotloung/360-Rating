@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2, UserPlus, Trash2 } from 'lucide-react';
-import { extractAuthParams } from '@/lib/params';
+import { extractAuthParams, buildAuthToken } from '@/lib/params';
 
 interface AdminRow {
   AdministratorID: number;
@@ -16,6 +16,7 @@ export default function AdminsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { uid, email } = extractAuthParams(searchParams as any);
+  const auth = uid && email ? buildAuthToken(uid, email) : null;
 
   const [loading, setLoading] = useState(true);
   const [admins, setAdmins] = useState<AdminRow[]>([]);
@@ -34,7 +35,7 @@ export default function AdminsPage() {
   const fetchAdmins = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/admins?uid=${uid}&email=${email}`);
+      const res = await fetch(`/api/admin/admins?auth=${encodeURIComponent(auth || '')}`);
       if (!res.ok) {
         if (res.status === 401) {
           router.push('/error-access-denied');
@@ -61,7 +62,7 @@ export default function AdminsPage() {
     }
 
     try {
-      const res = await fetch(`/api/admin/admins?uid=${uid}&email=${email}`, {
+      const res = await fetch(`/api/admin/admins?auth=${encodeURIComponent(auth || '')}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: newEmail, description: newDesc }),
@@ -87,7 +88,7 @@ export default function AdminsPage() {
     if (!confirm(`Remove admin ${targetEmail}? This cannot be undone.`)) return;
 
     try {
-      const res = await fetch(`/api/admin/admins?uid=${uid}&email=${email}`, {
+      const res = await fetch(`/api/admin/admins?auth=${encodeURIComponent(auth || '')}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: targetEmail }),
@@ -126,7 +127,7 @@ export default function AdminsPage() {
             </div>
             <div>
               <button
-                onClick={() => router.push(`/admin?uid=${uid}&email=${email}`)}
+                onClick={() => router.push(`/admin?auth=${encodeURIComponent(auth || '')}`)}
                 className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-100"
               >
                 Back

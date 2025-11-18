@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { extractAuthParams } from '@/lib/params';
+import { extractAuthParams, buildAuthToken } from '@/lib/params';
 import { useRef } from 'react';
 
 export default function AdminImportPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { uid, email } = extractAuthParams(searchParams as any);
-
+  const auth = uid && email ? buildAuthToken(uid, email) : null;
   const [fileContent, setFileContent] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -33,7 +33,7 @@ export default function AdminImportPage() {
     // Fetch active period for display
     (async () => {
       try {
-        const res = await fetch(`/api/admin/periods?uid=${encodeURIComponent(uid)}&email=${encodeURIComponent(email)}`);
+        const res = await fetch(`/api/admin/periods?auth=${encodeURIComponent(auth || '')}`);
         if (!res.ok) return;
         const data = await res.json();
         if (data && data.period) {
@@ -97,7 +97,7 @@ export default function AdminImportPage() {
       const res = await fetch('/api/admin/assignments/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid, email, assignments: fileContent, periodId }),
+        body: JSON.stringify({ auth: auth, assignments: fileContent, periodId }),
       });
       const data = await res.json();
       clearInterval(iv);
@@ -201,8 +201,7 @@ export default function AdminImportPage() {
 
     const fd = new FormData();
     fd.append('file', csvFile);
-    fd.append('uid', uid);
-    fd.append('email', email);
+    fd.append('auth', auth || '');
     if (periodId) fd.append('periodId', String(periodId));
 
     const xhr = new XMLHttpRequest();

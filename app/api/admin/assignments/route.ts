@@ -70,7 +70,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { uid, email, raterEmail, rateeEmail, periodId, relationship } = body;
+    const { raterEmail, rateeEmail, periodId, relationship } = body;
+    const { uid, email } = extractAuthParams(body as any);
 
     const validation = await validateUser(uid, email);
     if (!validation.isValid || !validation.isAdmin) {
@@ -175,7 +176,8 @@ export async function DELETE(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { uid, email, assignmentId, relationship } = body;
+    const { assignmentId, relationship } = body;
+    const { uid, email } = extractAuthParams(body as any);
 
     const validation = await validateUser(uid ?? null, email ?? null);
     if (!validation.isValid || !validation.isAdmin) {

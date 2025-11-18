@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
+import { extractAuthParams } from '@/lib/params';
 
 export async function POST(request: NextRequest) {
   try {
     const form = await request.formData();
-    const uid = form.get('uid')?.toString() || null;
-    const email = form.get('email')?.toString() || null;
+    const authToken = form.get('auth')?.toString() || form.get('a')?.toString() || null;
+    const { uid, email } = extractAuthParams(authToken as any);
     const periodIdRaw = form.get('periodId')?.toString() || null;
 
     const file = form.get('file') as any;

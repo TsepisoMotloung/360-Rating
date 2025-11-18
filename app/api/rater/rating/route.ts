@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
 import { validateRatingInput } from '@/lib/validators';
+import { extractAuthParams } from '@/lib/params';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { uid, email, assignmentId, ratings, comment } = body;
+    const { assignmentId, ratings, comment } = body;
+    const { uid, email } = extractAuthParams(body as any);
 
     // Validate user
     const validation = await validateUser(uid, email);

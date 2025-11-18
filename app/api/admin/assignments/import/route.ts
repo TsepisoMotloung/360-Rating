@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
+import { extractAuthParams } from '@/lib/params';
 
 type Assignment = { raterEmail: string; rateeEmail: string; relationship?: number };
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { uid, email, assignments, periodId } = body as {
-      uid?: string;
-      email?: string;
+    const { assignments, periodId } = body as {
+      auth?: string;
       assignments?: Assignment[];
       periodId?: number;
     };
 
+    const { uid, email } = extractAuthParams(body as any);
     const validation = await validateUser(uid ?? null, email ?? null);
     if (!validation.isValid || !validation.isAdmin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

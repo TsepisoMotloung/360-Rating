@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
-import { extractAuthParams } from '@/lib/params';
+import { extractAuthParams, buildAuthToken } from '@/lib/params';
 
 function HomeContent() {
   const router = useRouter();
@@ -18,9 +18,9 @@ function HomeContent() {
       }
 
       try {
-        const res = await fetch(`/api/auth/resolve?uid=${encodeURIComponent(
-          uid
-        )}&email=${encodeURIComponent(email)}`);
+        // Ask server to validate the provided auth token
+        const auth = buildAuthToken(uid!, email!);
+        const res = await fetch(`/api/auth/resolve?auth=${encodeURIComponent(auth)}`);
         if (!res.ok) {
           router.push('/error-session-expired');
           return;
@@ -30,10 +30,11 @@ function HomeContent() {
         const finalUid = data.canonicalUid ?? uid;
         const finalEmail = data.canonicalEmail ?? email;
 
+        const finalAuth = buildAuthToken(finalUid, finalEmail);
         if ((finalEmail || '').toLowerCase() === 'tmotloung@alliance.co.ls') {
-          router.push(`/admin?uid=${finalUid}&email=${finalEmail}`);
+          router.push(`/admin?auth=${finalAuth}`);
         } else {
-          router.push(`/rater?uid=${finalUid}&email=${finalEmail}`);
+          router.push(`/rater?auth=${finalAuth}`);
         }
       } catch (err) {
         console.error('Redirect error:', err);

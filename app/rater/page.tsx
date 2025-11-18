@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { extractAuthParams } from '@/lib/params';
+import { extractAuthParams, buildAuthToken } from '@/lib/params';
 import Accordion from '@/components/Accordion';
 import RatingScale from '@/components/RatingScale';
 import { Loader2, Send } from 'lucide-react';
@@ -41,6 +41,7 @@ function RaterContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { uid, email } = extractAuthParams(searchParams as any);
+  const auth = uid && email ? buildAuthToken(uid, email) : null;
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -60,7 +61,7 @@ function RaterContent() {
 
   const fetchAssignments = async () => {
     try {
-      const response = await fetch(`/api/rater/assignments?uid=${uid}&email=${email}`);
+      const response = await fetch(`/api/rater/assignments?auth=${encodeURIComponent(auth || '')}`);
       if (!response.ok) {
         if (response.status === 401) {
           router.push('/error-access-denied');
@@ -137,8 +138,7 @@ function RaterContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          uid,
-          email,
+          auth: auth,
           assignmentId,
           ratings,
           comment: data.comment,
@@ -189,7 +189,7 @@ function RaterContent() {
       const response = await fetch('/api/rater/submit-all', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid, email, submissions }),
+        body: JSON.stringify({ auth: auth, submissions }),
       });
 
       if (response.ok) {
@@ -227,7 +227,7 @@ function RaterContent() {
               Rating Period: <span className="font-medium">{period.name}</span>
             </p>
           )}
-          <p className="text-sm text-gray-500 mt-1">Logged in as: {email}</p>
+          <p className="text-sm text-gray-500 mt-1">Logged in</p>
         </div>
 
         {/* Message */}

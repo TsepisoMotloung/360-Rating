@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2, Plus, Trash2, Search, ChevronDown, ChevronUp, AlertCircle, CheckCircle } from 'lucide-react';
-import { extractAuthParams } from '@/lib/params';
+import { extractAuthParams, buildAuthToken } from '@/lib/params';
 
 interface Assignment {
   AssignmentID: number;
@@ -39,6 +39,7 @@ function AssignmentsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { uid, email } = extractAuthParams(searchParams as any);
+  const auth = uid && email ? buildAuthToken(uid, email) : null;
 
   const [loading, setLoading] = useState(true);
   const [pageProgress, setPageProgress] = useState<number>(0);
@@ -118,7 +119,7 @@ function AssignmentsContent() {
     try {
       setPageProgress(3);
       const iv = setInterval(() => setPageProgress((p) => Math.min(97, p + Math.ceil(Math.random() * 6))), 300);
-      const response = await fetch(`/api/admin/assignments?uid=${uid}&email=${email}`);
+      const response = await fetch(`/api/admin/assignments?auth=${encodeURIComponent(auth || '')}`);
       if (!response.ok) {
         if (response.status === 401) {
           router.push('/error-access-denied');
@@ -154,8 +155,7 @@ function AssignmentsContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          uid,
-          email,
+          auth: auth,
           raterEmail: newRaterEmail,
           rateeEmail: newRateeEmail,
           periodId,
@@ -225,7 +225,7 @@ function AssignmentsContent() {
       const res = await fetch('/api/admin/assignments', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid, email, assignmentId, relationship: editingRelationship }),
+        body: JSON.stringify({ auth: auth, assignmentId, relationship: editingRelationship }),
       });
       const data = await res.json();
       finishProgress();
@@ -251,7 +251,7 @@ function AssignmentsContent() {
 
     try {
       const response = await fetch(
-        `/api/admin/assignments?uid=${uid}&email=${email}&assignmentId=${confirmDialog.assignmentId}`,
+        `/api/admin/assignments?auth=${encodeURIComponent(auth || '')}&assignmentId=${confirmDialog.assignmentId}`,
         { method: 'DELETE' }
       );
 
@@ -317,7 +317,7 @@ function AssignmentsContent() {
       for (let i = 0; i < ids.length; i++) {
         try {
           const response = await fetch(
-            `/api/admin/assignments?uid=${uid}&email=${email}&assignmentId=${ids[i]}`,
+            `/api/admin/assignments?auth=${encodeURIComponent(auth || '')}&assignmentId=${ids[i]}`,
             { method: 'DELETE' }
           );
           if (response.ok) {
@@ -366,7 +366,7 @@ function AssignmentsContent() {
               <p className="text-gray-600">Organize and manage rating assignments efficiently</p>
             </div>
             <button
-              onClick={() => router.push(`/admin?uid=${uid}&email=${email}`)}
+              onClick={() => router.push(`/admin?auth=${encodeURIComponent(auth || '')}`)}
               className="px-6 py-3 bg-white text-gray-700 border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 font-medium transition-all"
             >
               ← Back to Dashboard
