@@ -292,7 +292,7 @@ function RaterContent() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Comments (Optional)
+                      Comments
                     </label>
                     <textarea
                       value={formData[assignment.assignmentId]?.comment || ''}
