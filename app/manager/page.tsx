@@ -8,7 +8,7 @@ import Accordion from '@/components/Accordion';
 import RatingScale from '@/components/RatingScale';
 import MainLayout from '@/components/MainLayout';
 import useUserAccess from '@/lib/useUserAccess';
-import { Loader2, Send } from 'lucide-react';
+import { Loader2, Send, Plus } from 'lucide-react';
 
 interface Category {
   CategoryID: number;
@@ -24,6 +24,11 @@ interface Rating {
 
 interface Assignment {
   assignmentId: number;
+  raterUserId: string;
+  raterEmail: string;
+  raterFName?: string | null;
+  raterSurname?: string | null;
+  raterPosition?: string | null;
   rateeUserId: string;
   rateeEmail: string;
   rateeFName?: string | null;
@@ -41,7 +46,7 @@ interface RatingFormData {
   };
 }
 
-function RaterContent() {
+function ManagerContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const auth = searchParams.get('auth');
@@ -53,6 +58,9 @@ function RaterContent() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [formData, setFormData] = useState<RatingFormData>({});
   const [message, setMessage] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importData, setImportData] = useState('');
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     if (!auth) {
@@ -64,7 +72,7 @@ function RaterContent() {
 
   const fetchAssignments = async () => {
     try {
-      const response = await fetch(`/api/rater/assignments?auth=${encodeURIComponent(auth || '')}`);
+      const response = await fetch(`/api/manager/assignments?auth=${encodeURIComponent(auth || '')}`);
       if (!response.ok) {
         if (response.status === 401) {
           router.push('/error-access-denied');
@@ -137,7 +145,7 @@ function RaterContent() {
         value,
       }));
 
-      const response = await fetch('/api/rater/rating', {
+      const response = await fetch('/api/manager/rating', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -164,50 +172,51 @@ function RaterContent() {
     }
   };
 
-  const submitAllRatings = async () => {
-    const incompleteAssignments = assignments.filter(a => {
-      const data = formData[a.assignmentId];
-      return !data || Object.keys(data.ratings).length !== categories.length;
-    });
-
-    if (incompleteAssignments.length > 0) {
-      setMessage(`Please complete all ${incompleteAssignments.length} remaining ratings`);
-      setTimeout(() => setMessage(''), 3000);
+  const handleImportAssignments = async () => {
+    if (!importData.trim()) {
+      setMessage('Please enter assignment data');
       return;
     }
 
-    setSubmitting(true);
+    setImporting(true);
     try {
-      const submissions = assignments.map(assignment => ({
-        assignmentId: assignment.assignmentId,
-        ratings: Object.entries(formData[assignment.assignmentId].ratings).map(
-          ([categoryId, value]) => ({
-            categoryId: parseInt(categoryId),
-            value,
-          })
-        ),
-        comment: formData[assignment.assignmentId].comment,
-      }));
+      // Parse JSON input
+      const data = JSON.parse(importData);
+      const assignmentsArray = Array.isArray(data) ? data : [data];
 
-      const response = await fetch('/api/rater/submit-all', {
+      // Validate format
+      const validAssignments = assignmentsArray.filter(a => 
+        a.raterEmail && a.rateeEmail
+      );
+
+      if (validAssignments.length === 0) {
+        setMessage('No valid assignments found in input');
+        setImporting(false);
+        return;
+      }
+
+      const response = await fetch('/api/manager/assignments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ auth: auth, submissions }),
+        body: JSON.stringify({ auth, assignments: validAssignments }),
       });
 
-      if (response.ok) {
-        setMessage('All ratings submitted successfully!');
-        setTimeout(() => setMessage(''), 3000);
+      const result = await response.json();
+      
+      if (response.ok || response.status === 207) {
+        setMessage(result.message || `Successfully imported ${result.created || validAssignments.length} assignments`);
+        setImportData('');
+        setShowImportModal(false);
         await fetchAssignments();
       } else {
-        throw new Error('Failed to submit all ratings');
+        setMessage(result.error || 'Failed to import assignments');
       }
     } catch (error) {
-      console.error('Error submitting all ratings:', error);
-      setMessage('Failed to submit all ratings');
-      setTimeout(() => setMessage(''), 3000);
+      console.error('Error importing assignments:', error);
+      setMessage('Invalid JSON format or import failed');
     } finally {
-      setSubmitting(false);
+      setImporting(false);
+      setTimeout(() => setMessage(''), 4000);
     }
   };
 
@@ -215,7 +224,7 @@ function RaterContent() {
 
   if (loading || accessLoading) {
     return (
-      <MainLayout userEmail={accessEmail} userRole="rater" userAccess={access} auth={auth || ''}>
+      <MainLayout userEmail={accessEmail} userRole="manager" userAccess={access} auth={auth || ''}>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         </div>
@@ -224,25 +233,90 @@ function RaterContent() {
   }
 
   return (
-    <MainLayout userEmail={accessEmail} userRole="rater" userAccess={access} auth={auth || ''}>
+    <MainLayout userEmail={accessEmail} userRole="manager" userAccess={access} auth={auth || ''}>
       {/* Header */}
       <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">360° Rating System</h1>
-        {period && (
-          <p className="text-gray-600">
-            Rating Period: <span className="font-medium">{period.name}</span>
-          </p>
-        )}
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Manager Portal</h1>
+            {period && (
+              <p className="text-gray-600">
+                Rating Period: <span className="font-medium">{period.name}</span>
+              </p>
+            )}
+          </div>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Import Assignments
+          </button>
+        </div>
       </div>
 
       {/* Message */}
       {message && (
         <div className={`rounded-lg border p-4 mb-6 ${
-          message.includes('success') 
+          message.includes('success') || message.includes('imported')
             ? 'bg-green-50 border-green-200 text-green-800' 
             : 'bg-blue-50 border-blue-200 text-blue-800'
         }`}>
           <p>{message}</p>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Import Assignments</h2>
+            
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">
+                Paste JSON format with raterEmail, rateeEmail, and optional position fields
+              </p>
+              <textarea
+                value={importData}
+                onChange={(e) => setImportData(e.target.value)}
+                disabled={importing}
+                rows={8}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                placeholder={`[
+  {
+    "raterEmail": "rater@example.com",
+    "rateeEmail": "ratee@example.com",
+    "raterPosition": "Manager",
+    "rateePosition": "Developer"
+  }
+]`}
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setShowImportModal(false)}
+                disabled={importing}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleImportAssignments}
+                disabled={importing}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {importing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Importing...
+                  </>
+                ) : (
+                  'Import'
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -267,15 +341,22 @@ function RaterContent() {
       {/* Assignments */}
       {assignments.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-          <p className="text-gray-600">No assignments found for the current period.</p>
+          <p className="text-gray-600 mb-4">No assignments found for the current period.</p>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="inline-flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Import Assignments
+          </button>
         </div>
       ) : (
         <div className="space-y-4">
           {assignments.map(assignment => (
             <Accordion
               key={assignment.assignmentId}
-              title={`${(assignment.rateeFName || '').trim()} ${(assignment.rateeSurname || '').trim()} (${assignment.rateeEmail})`}
-              subtitle={assignment.rateePosition ? `Position: ${assignment.rateePosition}` : undefined}
+              title={`${(assignment.raterFName || '').trim()} ${(assignment.raterSurname || '').trim()} → ${(assignment.rateeFName || '').trim()} ${(assignment.rateeSurname || '').trim()}`}
+              subtitle={`${assignment.raterEmail} → ${assignment.rateeEmail}${assignment.raterPosition ? ` (${assignment.raterPosition} → ${assignment.rateePosition || 'N/A'})` : ''}`}
               isCompleted={assignment.isCompleted}
             >
               <div className="space-y-6">
@@ -332,41 +413,18 @@ function RaterContent() {
           ))}
         </div>
       )}
-
-      {/* Submit All Button */}
-      {assignments.length > 0 && (
-        <div className="mt-8 bg-white rounded-lg shadow-sm p-6">
-          <button
-            onClick={submitAllRatings}
-            disabled={submitting}
-            className="w-full bg-green-600 text-white py-4 px-6 rounded-lg font-medium text-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="w-6 h-6 animate-spin" />
-                Submitting All...
-              </>
-            ) : (
-              <>
-                <Send className="w-6 h-6" />
-                Submit All Ratings
-              </>
-            )}
-          </button>
-        </div>
-      )}
     </MainLayout>
   );
 }
 
-export default function RaterPage() {
+export default function ManagerPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     }>
-      <RaterContent />
+      <ManagerContent />
     </Suspense>
   );
 }

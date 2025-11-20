@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2, UserPlus, Trash2 } from 'lucide-react';
-import { extractAuthParams, buildAuthToken } from '@/lib/params';
+import MainLayout from '@/components/MainLayout';
+import useUserAccess from '@/lib/useUserAccess';
 
 interface AdminRow {
   AdministratorID: number;
@@ -15,22 +16,22 @@ interface AdminRow {
 export default function AdminsClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { uid, email } = extractAuthParams(searchParams as any);
-  const auth = uid && email ? buildAuthToken(uid, email) : null;
+  const auth = searchParams.get('auth');
 
   const [loading, setLoading] = useState(true);
   const [admins, setAdmins] = useState<AdminRow[]>([]);
   const [newEmail, setNewEmail] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [message, setMessage] = useState('');
+  const { userAccess: access, userEmail: accessEmail, loading: accessLoading } = useUserAccess();
 
   useEffect(() => {
-    if (!uid || !email) {
-      router.push('/error-invalid-request');
+    if (!auth) {
+      router.push('/');
       return;
     }
     fetchAdmins();
-  }, [uid, email]);
+  }, [auth, router]);
 
   const fetchAdmins = async () => {
     setLoading(true);
@@ -108,18 +109,20 @@ export default function AdminsClient() {
     }
   };
 
-  if (loading) {
+  if (loading || accessLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-red-600" />
-      </div>
+      <MainLayout userEmail={accessEmail} userRole="admin" userAccess={access} auth={auth || ''}>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-red-600" />
+        </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-gray-100">
+    <MainLayout userEmail={accessEmail} userRole="admin" userAccess={access} auth={auth || ''}>
+      <div className="space-y-6">
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Manage Admins</h1>
@@ -137,10 +140,10 @@ export default function AdminsClient() {
         </div>
 
         {message && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-900">{message}</div>
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-900">{message}</div>
         )}
 
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mb-6">
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
           <div className="grid md:grid-cols-3 gap-3">
             <input
               value={newEmail}
@@ -182,6 +185,6 @@ export default function AdminsClient() {
           </div>
         </div>
       </div>
-    </div>
+    </MainLayout>
   );
 }

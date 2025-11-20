@@ -5,7 +5,8 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2, Plus, Trash2, Search, ChevronDown, ChevronUp, AlertCircle, CheckCircle } from 'lucide-react';
-import { extractAuthParams, buildAuthToken } from '@/lib/params';
+import MainLayout from '@/components/MainLayout';
+import useUserAccess from '@/lib/useUserAccess';
 
 interface Assignment {
   AssignmentID: number;
@@ -40,8 +41,7 @@ interface ConfirmDialog {
 function AssignmentsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { uid, email } = extractAuthParams(searchParams as any);
-  const auth = uid && email ? buildAuthToken(uid, email) : null;
+  const auth = searchParams.get('auth');
 
   const [loading, setLoading] = useState(true);
   const [pageProgress, setPageProgress] = useState<number>(0);
@@ -53,6 +53,8 @@ function AssignmentsContent() {
   const [newRaterEmail, setNewRaterEmail] = useState('');
   const [newRateeEmail, setNewRateeEmail] = useState('');
   const [newRelationship, setNewRelationship] = useState<number>(1);
+  const [newRaterPosition, setNewRaterPosition] = useState('');
+  const [newRateePosition, setNewRateePosition] = useState('');
   const [periodId, setPeriodId] = useState<number | null>(null);
   const [expandedRatee, setExpandedRatee] = useState<string | null>(null);
   const [selectedAssignments, setSelectedAssignments] = useState<Set<number>>(new Set());
@@ -64,14 +66,15 @@ function AssignmentsContent() {
   const [editingAssignmentId, setEditingAssignmentId] = useState<number | null>(null);
   const [editingRelationship, setEditingRelationship] = useState<number>(1);
   const [operationProgress, setOperationProgress] = useState<number>(0);
+  const { userAccess: access, userEmail: accessEmail, loading: accessLoading } = useUserAccess();
 
   useEffect(() => {
-    if (!uid || !email) {
+    if (!auth) {
       router.push('/error-invalid-request');
       return;
     }
     fetchAssignments();
-  }, [uid, email]);
+  }, [auth]);
 
   useEffect(() => {
     if (searchTerm) {
@@ -147,7 +150,7 @@ function AssignmentsContent() {
 
   const handleAddAssignment = async () => {
     if (!newRaterEmail || !newRateeEmail || !periodId || !newRelationship) {
-      setMessage('Please fill all fields');
+      setMessage('Please fill all required fields');
       setTimeout(() => setMessage(''), 3000);
       return;
     }
@@ -162,6 +165,8 @@ function AssignmentsContent() {
           rateeEmail: newRateeEmail,
           periodId,
           relationship: newRelationship,
+          raterPosition: newRaterPosition || null,
+          rateePosition: newRateePosition || null,
         }),
       });
 
@@ -172,6 +177,8 @@ function AssignmentsContent() {
         setNewRaterEmail('');
         setNewRateeEmail('');
         setNewRelationship(1);
+        setNewRaterPosition('');
+        setNewRateePosition('');
         setShowAddForm(false);
         await fetchAssignments();
       } else {
@@ -221,7 +228,7 @@ function AssignmentsContent() {
   };
 
   const handleSaveRelationship = async (assignmentId: number) => {
-    if (!uid || !email) return router.push('/error-invalid-request');
+    if (!auth) return router.push('/error-invalid-request');
     const iv = startProgress();
     try {
       const res = await fetch('/api/admin/assignments', {
@@ -349,19 +356,21 @@ function AssignmentsContent() {
     }
   };
 
-  if (loading) {
+  if (loading || accessLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-white">
-        <Loader2 className="w-8 h-8 animate-spin text-red-600" />
-      </div>
+      <MainLayout userEmail={accessEmail} userRole="admin" userAccess={access} auth={auth || ''}>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-red-600" />
+        </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white py-8 px-4">
-      <div className="max-w-6xl mx-auto">
+    <MainLayout userEmail={accessEmail} userRole="admin" userAccess={access} auth={auth || ''}>
+      <div className="space-y-6">
         {/* Header */}
-        <div className="mb-8">
+        <div>
           <div className="flex justify-between items-start mb-6">
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-2">Manage Assignments</h1>
@@ -488,6 +497,32 @@ function AssignmentsContent() {
                   </select>
                 </div>
               </div>
+              <div className="grid md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Rater Position (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={newRaterPosition}
+                    onChange={(e) => setNewRaterPosition(e.target.value)}
+                    placeholder="e.g., Manager, Coordinator"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ratee Position (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={newRateePosition}
+                    onChange={(e) => setNewRateePosition(e.target.value)}
+                    placeholder="e.g., Manager, Coordinator"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
               <div className="flex gap-4 mt-4">
                 <button
                   onClick={handleAddAssignment}
@@ -500,6 +535,8 @@ function AssignmentsContent() {
                     setShowAddForm(false);
                     setNewRaterEmail('');
                     setNewRateeEmail('');
+                    setNewRaterPosition('');
+                    setNewRateePosition('');
                   }}
                   className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-all"
                 >
@@ -723,7 +760,7 @@ function AssignmentsContent() {
           </div>
         </div>
       )}
-    </div>
+    </MainLayout>
   );
 }
 

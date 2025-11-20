@@ -50,10 +50,12 @@ export async function GET(request: NextRequest) {
         RaterEmail: a.raterEmail,
         RaterFName: a.rater?.FName || null,
         RaterSurname: a.rater?.Surname || null,
+        RaterPosition: a.raterPosition || null,
         RateeUserID: a.rateeUserId,
         RateeEmail: a.rateeEmail,
         RateeFName: a.ratee?.FName || null,
         RateeSurname: a.ratee?.Surname || null,
+        RateePosition: a.rateePosition || null,
         Relationship: a.relationship || null,
         IsCompleted: a.isCompleted,
         DateCompleted: a.dateCompleted,
@@ -71,7 +73,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { raterEmail, rateeEmail, periodId, relationship } = body;
+    const { raterEmail, rateeEmail, periodId, relationship, raterPosition, rateePosition } = body;
     const { uid, email } = extractAuthParams(body as any);
 
     const validation = await validateUser(uid, email);
@@ -129,6 +131,8 @@ export async function POST(request: NextRequest) {
         rateeEmail,
         isCompleted: false,
         relationship: typeof relationship === 'number' ? relationship : undefined,
+        raterPosition: raterPosition || null,
+        rateePosition: rateePosition || null,
       },
     });
 

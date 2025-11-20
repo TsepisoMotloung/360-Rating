@@ -5,6 +5,8 @@ export interface UserValidation {
   userId?: number;
   email?: string;
   isAdmin?: boolean;
+  isManager?: boolean;
+  managerId?: number;
 }
 
 const ADMIN_EMAIL = 'tmotloung@alliance.co.ls';
@@ -62,11 +64,28 @@ export async function validateUser(
         dbIsAdmin = (u.Username || '').toLowerCase() === ADMIN_EMAIL.toLowerCase();
       }
 
+      // Check if user is a manager
+      let isManager = false;
+      let managerId: number | undefined;
+      try {
+        const manager = await prisma.manager.findUnique({
+          where: { email: (u.Username || '').toLowerCase() },
+        });
+        if (manager && manager.isActive) {
+          isManager = true;
+          managerId = manager.id;
+        }
+      } catch (err) {
+        console.warn('Could not query Manager table:', err);
+      }
+
       return {
         isValid: true,
         userId: u.UserID,
         email: u.Username || email,
         isAdmin: dbIsAdmin,
+        isManager,
+        managerId,
       };
     }
 
@@ -114,43 +133,44 @@ export async function validateUser(
     }
 
     // determine admin membership from DB table if present
+    let dbIsAdmin = false;
     try {
       const admins = await prisma.tblAdministrators.findMany({ where: { IsActive: 1 } });
       const canonical = (best.Username || email || '').toLowerCase();
       const match = admins.find((a) => (a.Username || '').toLowerCase() === canonical);
       if (match) {
-        return {
-          isValid: true,
-          userId: best.UserID,
-          email: best.Username || email,
-          isAdmin: true,
-        };
-      }
-
-      if (admins.length === 0) {
+        dbIsAdmin = true;
+      } else if (admins.length === 0) {
         // no admins defined in DB yet — preserve legacy single-email admin behavior
-        return {
-          isValid: true,
-          userId: best.UserID,
-          email: best.Username || email,
-          isAdmin: (best.Username || '').toLowerCase() === ADMIN_EMAIL.toLowerCase(),
-        };
+        dbIsAdmin = (best.Username || '').toLowerCase() === ADMIN_EMAIL.toLowerCase();
       }
     } catch (err) {
       console.warn('Could not query tblAdministrators, falling back to ADMIN_EMAIL:', err);
-      return {
-        isValid: true,
-        userId: best.UserID,
-        email: best.Username || email,
-        isAdmin: (best.Username || '').toLowerCase() === ADMIN_EMAIL.toLowerCase(),
-      };
+      dbIsAdmin = (best.Username || '').toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    }
+
+    // Check if user is a manager
+    let isManager = false;
+    let managerId: number | undefined;
+    try {
+      const manager = await prisma.manager.findUnique({
+        where: { email: (best.Username || '').toLowerCase() },
+      });
+      if (manager && manager.isActive) {
+        isManager = true;
+        managerId = manager.id;
+      }
+    } catch (err) {
+      console.warn('Could not query Manager table:', err);
     }
 
     return {
       isValid: true,
       userId: best.UserID,
       email: best.Username || email,
-      isAdmin: false,
+      isAdmin: dbIsAdmin,
+      isManager,
+      managerId,
     };
   } catch (error) {
     console.error('User validation error:', error);

@@ -183,6 +183,8 @@ model tblUser {
   tblPIN          tblPIN[]
   ratingsReceived RatingAssignment[] @relation("RateeAssignments")
   ratingsGiven    RatingAssignment[] @relation("RaterAssignments")
+  managerRatings  ManagerAssignment[] @relation("ManagerRater")
+  managerRatees   ManagerAssignment[] @relation("ManagerRatee")
   tblUserRole     tblUserRole[]
 }
 
@@ -213,16 +215,18 @@ model RatingPeriod {
   createdBy   String?            @map("CreatedBy") @db.VarChar(100)
   dateCreated DateTime           @default(now()) @map("DateCreated") @db.DateTime(0)
   assignments RatingAssignment[]
+  managerAssignments ManagerAssignment[]
 
   @@index([isActive], map: "idx_active_period")
   @@map("tblRatingPeriod")
 }
 
 model RatingCategory {
-  id           Int              @id @default(autoincrement()) @map("CategoryID")
-  categoryName String           @map("CategoryName") @db.VarChar(100)
-  sortOrder    Int              @map("SortOrder")
-  responses    RatingResponse[]
+  id               Int              @id @default(autoincrement()) @map("CategoryID")
+  categoryName     String           @map("CategoryName") @db.VarChar(100)
+  sortOrder        Int              @map("SortOrder")
+  responses        RatingResponse[]
+  managerResponses ManagerResponse[]
 
   @@index([sortOrder], map: "idx_sort_order")
   @@map("tblRatingCategory")
@@ -235,6 +239,8 @@ model RatingAssignment {
   raterEmail     String           @map("RaterEmail") @db.VarChar(100)
   rateeUserId    Int              @map("RateeUserID")
   rateeEmail     String           @map("RateeEmail") @db.VarChar(100)
+  rateePosition  String?          @map("RateePosition") @db.VarChar(100)
+  raterPosition  String?          @map("RaterPosition") @db.VarChar(100)
   isCompleted    Boolean          @default(false) @map("IsCompleted")
   dateCompleted  DateTime?        @map("DateCompleted") @db.DateTime(0)
   createdDate    DateTime         @default(now()) @map("CreatedDate") @db.DateTime(0)
@@ -275,4 +281,62 @@ model AdminReportsLog {
   @@index([adminEmail], map: "idx_admin_email")
   @@index([exportDate], map: "idx_export_date")
   @@map("tblAdminReportsLog")
+}
+
+model Manager {
+  id              Int                @id @default(autoincrement()) @map("ManagerID")
+  email           String             @unique @map("Email") @db.VarChar(100)
+  firstName       String?            @map("FirstName") @db.VarChar(100)
+  lastName        String?            @map("LastName") @db.VarChar(100)
+  isActive        Boolean            @default(true) @map("IsActive")
+  createdBy       String?            @map("CreatedBy") @db.VarChar(100)
+  dateCreated     DateTime           @default(now()) @map("DateCreated") @db.DateTime(0)
+  assignments     ManagerAssignment[]
+
+  @@index([email], map: "idx_manager_email")
+  @@index([isActive], map: "idx_manager_active")
+  @@map("tblManager")
+}
+
+model ManagerAssignment {
+  id             Int              @id @default(autoincrement()) @map("ManagerAssignmentID")
+  managerId       Int              @map("ManagerID")
+  ratingPeriodId Int              @map("RatingPeriodID")
+  raterUserId    Int              @map("RaterUserID")
+  raterEmail     String           @map("RaterEmail") @db.VarChar(100)
+  rateeUserId    Int              @map("RateeUserID")
+  rateeEmail     String           @map("RateeEmail") @db.VarChar(100)
+  rateePosition  String?          @map("RateePosition") @db.VarChar(100)
+  raterPosition  String?          @map("RaterPosition") @db.VarChar(100)
+  isCompleted    Boolean          @default(false) @map("IsCompleted")
+  dateCompleted  DateTime?        @map("DateCompleted") @db.DateTime(0)
+  createdDate    DateTime         @default(now()) @map("CreatedDate") @db.DateTime(0)
+  manager        Manager          @relation(fields: [managerId], references: [id], onDelete: Cascade)
+  period         RatingPeriod     @relation(fields: [ratingPeriodId], references: [id], onDelete: Cascade)
+  rater          tblUser          @relation("ManagerRater", fields: [raterUserId], references: [UserID], onDelete: Cascade)
+  ratee          tblUser          @relation("ManagerRatee", fields: [rateeUserId], references: [UserID], onDelete: Cascade)
+  responses      ManagerResponse[]
+  relationship   Int?             @map("RelationshipType")
+
+  @@unique([managerId, ratingPeriodId, raterUserId, rateeUserId], name: "unique_manager_assignment", map: "unique_manager_assignment")
+  @@index([managerId], map: "idx_manager_id")
+  @@index([raterUserId, ratingPeriodId], map: "idx_manager_rater_period")
+  @@index([rateeUserId, ratingPeriodId], map: "idx_manager_ratee_period")
+  @@index([ratingPeriodId], map: "idx_manager_period")
+  @@map("tblManagerAssignment")
+}
+
+model ManagerResponse {
+  id            Int               @id @default(autoincrement()) @map("ManagerResponseID")
+  assignmentId  Int               @map("ManagerAssignmentID")
+  categoryId    Int               @map("CategoryID")
+  ratingValue   Int               @map("RatingValue")
+  comment       String?           @map("Comment") @db.Text
+  updatedDate   DateTime          @default(now()) @map("UpdatedDate") @db.DateTime(0)
+  assignment    ManagerAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  category      RatingCategory    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([assignmentId], map: "idx_manager_assignment")
+  @@index([categoryId], map: "idx_manager_category")
+  @@map("tblManagerResponse")
 }

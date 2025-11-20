@@ -2,13 +2,13 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { extractAuthParams, buildAuthToken } from '@/lib/params';
+import MainLayout from '@/components/MainLayout';
+import useUserAccess from '@/lib/useUserAccess';
 
 export default function AdminImportClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { uid, email } = extractAuthParams(searchParams as any);
-  const auth = uid && email ? buildAuthToken(uid, email) : null;
+  const auth = searchParams.get('auth');
 
   const [items, setItems] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -19,10 +19,11 @@ export default function AdminImportClient() {
   const xhrRef = useRef<XMLHttpRequest | null>(null);
   const [failedRows, setFailedRows] = useState<any[]>([]);
   const [result, setResult] = useState<any | null>(null);
+  const { userAccess: access, userEmail: accessEmail, loading: accessLoading } = useUserAccess();
 
   useEffect(() => {
-    if (!uid || !email) router.push('/error-invalid-request');
-  }, [uid, email, router]);
+    if (!auth) router.push('/error-invalid-request');
+  }, [auth, router]);
 
   const handleJsonFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null);
@@ -211,9 +212,9 @@ export default function AdminImportClient() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-3xl mx-auto">
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+    <MainLayout userEmail={accessEmail} userRole="admin" userAccess={access} auth={auth || ''}>
+      <div className="space-y-6">
+        <div className="bg-white rounded-lg shadow-sm p-6">
           <h1 className="text-2xl font-bold mb-2">Import Assignments</h1>
           <p className="text-sm text-gray-600 mb-4">Upload JSON or CSV assignments. Emails are not exposed — an `auth` token is used.</p>
 
@@ -299,6 +300,6 @@ export default function AdminImportClient() {
           )}
         </div>
       </div>
-    </div>
+    </MainLayout>
   );
 }
