@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
       rateeSurname: assignment.ratee?.Surname || null,
       isCompleted: assignment.isCompleted,
       dateCompleted: assignment.dateCompleted,
-      ratings: assignment.responses.map((r) => ({
+      ratings: assignment.responses.map((r: any) => ({
         CategoryID: r.categoryId,
         RatingValue: r.ratingValue,
         Comment: r.comment || '',

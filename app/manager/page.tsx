@@ -2,21 +2,13 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { Suspense } from 'react';
+import ManagerPageContent from './manager-content';
 
 export default function ManagerPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const auth = searchParams.get('auth');
-
-  useEffect(() => {
-    if (auth) {
-      router.push(`/manager/dashboard?auth=${encodeURIComponent(auth)}`);
-    } else {
-      router.push('/');
-    }
-  }, [auth, router]);
-
-  return null;
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ManagerPageContent />
+    </Suspense>
+  );
 }

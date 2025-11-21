@@ -27,7 +27,7 @@ export default function useUserAccess() {
 
     async function fetchAccess() {
       try {
-        const res = await fetch(`/api/auth/validate?auth=${encodeURIComponent(auth)}`);
+        const res = await fetch(`/api/auth/validate?auth=${encodeURIComponent(auth ?? '')}`);
         if (!res.ok) {
           setUserAccess(null);
           return;
@@ -39,7 +39,7 @@ export default function useUserAccess() {
         // Check rater assignments (may return 401 if not rater)
         let hasRatings = false;
         try {
-          const r = await fetch(`/api/rater/assignments?auth=${encodeURIComponent(auth)}`);
+          const r = await fetch(`/api/rater/assignments?auth=${encodeURIComponent(auth ?? '')}`);
           if (r.ok) {
             const d = await r.json();
             hasRatings = Array.isArray(d.assignments) && d.assignments.length > 0;
