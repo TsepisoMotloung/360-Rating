@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform data to match frontend expectations
-    const format = (assignment, isManager = false) => ({
+    const format = (assignment: any, isManager = false) => ({
       assignmentId: assignment.id,
       rateeUserId: assignment.rateeUserId,
       rateeEmail: assignment.rateeEmail,
