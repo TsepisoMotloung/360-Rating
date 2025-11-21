@@ -1,6 +1,7 @@
 import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { extractAuthParams } from '@/lib/params';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,7 +12,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing auth parameter' }, { status: 400 });
     }
 
-    const { uid, email } = JSON.parse(Buffer.from(auth, 'base64').toString());
+    const { uid, email } = extractAuthParams(auth);
+    
+    if (!uid || !email) {
+      return NextResponse.json({ error: 'Invalid or missing auth parameter' }, { status: 400 });
+    }
+
     const validation = await validateUser(uid, email);
 
     if (!validation.isValid || !validation.isManager) {

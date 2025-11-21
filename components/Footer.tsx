@@ -22,50 +22,9 @@ export default function Footer() {
             </p>
           </div>
 
-          {/* Quick Links */}
-          <div>
-            <h4 className="text-white font-bold mb-4 flex items-center gap-2">
-              <span className="w-1 h-6 bg-white rounded-full"></span>
-              Quick Links
-            </h4>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/" className="text-red-100 hover:text-white transition-colors font-medium">
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link href="/" className="text-red-100 hover:text-white transition-colors font-medium">
-                  About
-                </Link>
-              </li>
-              <li>
-                <Link href="/" className="text-red-100 hover:text-white transition-colors font-medium">
-                  Help & Support
-                </Link>
-              </li>
-            </ul>
-          </div>
+          
 
-          {/* Support */}
-          <div>
-            <h4 className="text-white font-bold mb-4 flex items-center gap-2">
-              <span className="w-1 h-6 bg-white rounded-full"></span>
-              Contact Support
-            </h4>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <a href="mailto:support@example.com" className="text-red-100 hover:text-white transition-colors font-medium">
-                  📧 support@example.com
-                </a>
-              </li>
-              <li>
-                <a href="tel:+1234567890" className="text-red-100 hover:text-white transition-colors font-medium">
-                  📞 +1 (234) 567-890
-                </a>
-              </li>
-            </ul>
-          </div>
+          
         </div>
 
         {/* Divider */}

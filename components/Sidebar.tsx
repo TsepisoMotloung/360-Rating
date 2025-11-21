@@ -43,13 +43,16 @@ export default function Sidebar({ userRole, userAccess, auth }: SidebarProps) {
     ],
     rater: [
       { label: 'My Ratings', href: '/rater', icon: CheckSquare },
-      { label: 'Progress', href: '/rater/progress', icon: BarChart3 },
+      
     ],
   };
 
-  // Determine items based on userAccess (merge roles) or fallback to single userRole
+  // Determine items based on an explicitly selected `userRole` (preferred)
+  // If no explicit role is provided, fall back to merging available roles from `userAccess`.
   let items: { label: string; href: string; icon: any }[] = [];
-  if (userAccess) {
+  if (userRole) {
+    items = menuItems[userRole] || [];
+  } else if (userAccess) {
     const toAdd: { label: string; href: string; icon: any }[] = [];
     if (userAccess.isAdmin) toAdd.push(...menuItems.admin);
     if (userAccess.isManager) toAdd.push(...menuItems.manager);
@@ -63,12 +66,15 @@ export default function Sidebar({ userRole, userAccess, auth }: SidebarProps) {
       return true;
     });
   } else {
-    items = userRole ? menuItems[userRole] || [] : [];
+    items = [];
   }
 
   const isActive = (href: string) => {
     const pathWithoutParams = href.split('?')[0];
-    return pathname === pathWithoutParams || pathname.startsWith(pathWithoutParams + '/');
+    // Only exact match or root path for dashboard
+    if (pathWithoutParams === '/manager' && pathname === '/manager') return true;
+    if (pathWithoutParams === '/admin' && pathname === '/admin') return true;
+    return pathname === pathWithoutParams || pathname.startsWith(pathWithoutParams + '/') && pathWithoutParams !== '/manager' && pathWithoutParams !== '/admin';
   };
 
   return (

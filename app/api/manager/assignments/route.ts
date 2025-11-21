@@ -1,15 +1,16 @@
 import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { extractAuthParams } from '@/lib/params';
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = request.nextUrl.searchParams.get('auth');
-    if (!auth) {
-      return NextResponse.json({ error: 'Missing auth parameter' }, { status: 400 });
+    const { uid, email } = extractAuthParams(request.nextUrl.searchParams);
+    
+    if (!uid || !email) {
+      return NextResponse.json({ error: 'Invalid or missing auth parameter' }, { status: 400 });
     }
 
-    const { uid, email } = JSON.parse(Buffer.from(auth, 'base64').toString());
     const validation = await validateUser(uid, email);
 
     if (!validation.isValid || !validation.isManager) {
@@ -111,7 +112,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing auth parameter' }, { status: 400 });
     }
 
-    const { uid, email } = JSON.parse(Buffer.from(auth, 'base64').toString());
+    const { uid, email } = extractAuthParams(auth);
+    
+    if (!uid || !email) {
+      return NextResponse.json({ error: 'Invalid or missing auth parameter' }, { status: 400 });
+    }
+
     const validation = await validateUser(uid, email);
 
     if (!validation.isValid || !validation.isManager) {
@@ -141,15 +147,30 @@ export async function POST(request: NextRequest) {
     const results = await Promise.all(
       assignments.map(async (assignment: any) => {
         try {
+          // Look up rater and ratee by email
+          const rater = await prisma.tblUser.findFirst({
+            where: { Username: assignment.raterEmail },
+            select: { UserID: true },
+          });
+
+          const ratee = await prisma.tblUser.findFirst({
+            where: { Username: assignment.rateeEmail },
+            select: { UserID: true },
+          });
+
+          if (!rater || !ratee) {
+            return { success: false, error: `User not found for assignment` };
+          }
+
           const result = await prisma.managerAssignment.create({
             data: {
               managerId: validation.managerId!,
               ratingPeriodId: period.id,
-              raterUserId: assignment.raterUserId,
+              raterUserId: rater.UserID,
               raterEmail: assignment.raterEmail,
-              rateeUserId: assignment.rateeUserId,
+              rateeUserId: ratee.UserID,
               rateeEmail: assignment.rateeEmail,
-              relationship: assignment.relationship,
+              relationship: assignment.relationship || 1,
               raterPosition: assignment.raterPosition || null,
               rateePosition: assignment.rateePosition || null,
             },
