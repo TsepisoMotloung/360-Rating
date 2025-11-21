@@ -23,21 +23,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify all assignments belong to this rater
-    const assignmentIds = submissions.map((s: any) => s.assignmentId);
-    const assignmentCheck = await prisma.ratingAssignment.findMany({
-      where: {
-        raterUserId: validation.userId,
-        id: { in: assignmentIds },
-      },
-      select: { id: true },
-    });
+    // Separate admin and manager assignment IDs
+    const adminIds: number[] = [];
+    const managerIds: number[] = [];
 
-    if (assignmentCheck.length !== assignmentIds.length) {
-      return NextResponse.json(
-        { error: 'Some assignments not found or unauthorized' },
-        { status: 404 }
-      );
+    for (const submission of submissions) {
+      if (submission.source === 'manager') {
+        managerIds.push(submission.assignmentId);
+      } else {
+        adminIds.push(submission.assignmentId);
+      }
+    }
+
+    // Verify all admin assignments belong to this rater
+    if (adminIds.length > 0) {
+      const adminCheck = await prisma.ratingAssignment.findMany({
+        where: {
+          raterUserId: validation.userId,
+          id: { in: adminIds },
+        },
+        select: { id: true },
+      });
+      if (adminCheck.length !== adminIds.length) {
+        return NextResponse.json(
+          { error: 'Some admin assignments not found or unauthorized' },
+          { status: 404 }
+        );
+      }
+    }
+
+    // Verify all manager assignments belong to this rater
+    if (managerIds.length > 0) {
+      const managerCheck = await prisma.managerAssignment.findMany({
+        where: {
+          raterUserId: validation.userId,
+          id: { in: managerIds },
+        },
+        select: { id: true },
+      });
+      if (managerCheck.length !== managerIds.length) {
+        return NextResponse.json(
+          { error: 'Some manager assignments not found or unauthorized' },
+          { status: 404 }
+        );
+      }
     }
 
     // Process all submissions in a transaction
@@ -45,44 +74,83 @@ export async function POST(request: NextRequest) {
 
     await prisma.$transaction(async (tx) => {
       for (const submission of submissions) {
-        const { assignmentId, ratings, comment } = submission;
+        const { assignmentId, ratings, comment, source } = submission;
 
-        // Delete existing ratings
-        await tx.ratingResponse.deleteMany({
-          where: { assignmentId },
-        });
-
-        // Insert new ratings
-        for (const rating of ratings) {
-          const validation = validateRatingInput({
-            assignmentId,
-            categoryId: rating.categoryId,
-            ratingValue: rating.value,
+        if (source === 'manager') {
+          // Delete existing manager ratings
+          await tx.managerResponse.deleteMany({
+            where: { assignmentId },
           });
 
-          if (!validation.isValid) {
-            throw new Error(`Invalid rating: ${validation.error}`);
-          }
-
-          await tx.ratingResponse.create({
-            data: {
+          // Insert new ratings
+          for (const rating of ratings) {
+            const validation = validateRatingInput({
               assignmentId,
               categoryId: rating.categoryId,
               ratingValue: rating.value,
-              comment: comment || null,
-              updatedDate: new Date(),
+            });
+
+            if (!validation.isValid) {
+              throw new Error(`Invalid rating: ${validation.error}`);
+            }
+
+            await tx.managerResponse.create({
+              data: {
+                assignmentId,
+                categoryId: rating.categoryId,
+                ratingValue: rating.value,
+                comment: comment || null,
+                updatedDate: new Date(),
+              },
+            });
+          }
+
+          // Update manager assignment as completed
+          await tx.managerAssignment.update({
+            where: { id: assignmentId },
+            data: {
+              isCompleted: true,
+              dateCompleted: new Date(),
+            },
+          });
+        } else {
+          // Delete existing admin ratings
+          await tx.ratingResponse.deleteMany({
+            where: { assignmentId },
+          });
+
+          // Insert new ratings
+          for (const rating of ratings) {
+            const validation = validateRatingInput({
+              assignmentId,
+              categoryId: rating.categoryId,
+              ratingValue: rating.value,
+            });
+
+            if (!validation.isValid) {
+              throw new Error(`Invalid rating: ${validation.error}`);
+            }
+
+            await tx.ratingResponse.create({
+              data: {
+                assignmentId,
+                categoryId: rating.categoryId,
+                ratingValue: rating.value,
+                comment: comment || null,
+                updatedDate: new Date(),
+              },
+            });
+          }
+
+          // Update admin assignment as completed
+          await tx.ratingAssignment.update({
+            where: { id: assignmentId },
+            data: {
+              isCompleted: true,
+              dateCompleted: new Date(),
             },
           });
         }
-
-        // Update assignment as completed
-        await tx.ratingAssignment.update({
-          where: { id: assignmentId },
-          data: {
-            isCompleted: true,
-            dateCompleted: new Date(),
-          },
-        });
 
         successCount++;
       }

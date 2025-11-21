@@ -46,8 +46,35 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Get assignments for this rater with existing ratings and ratee user info
-    const assignments = await prisma.ratingAssignment.findMany({
+    // Get admin assignments
+    const adminAssignments = await prisma.ratingAssignment.findMany({
+      where: {
+        raterUserId: validation.userId,
+        ratingPeriodId: activePeriod.id,
+      },
+      include: {
+        responses: {
+          select: {
+            categoryId: true,
+            ratingValue: true,
+            comment: true,
+          },
+        },
+        ratee: {
+          select: {
+            FName: true,
+            Surname: true,
+            Username: true,
+          },
+        },
+      },
+      orderBy: {
+        rateeEmail: 'asc',
+      },
+    });
+
+    // Get manager assignments
+    const managerAssignments = await prisma.managerAssignment.findMany({
       where: {
         raterUserId: validation.userId,
         ratingPeriodId: activePeriod.id,
@@ -74,7 +101,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform data to match frontend expectations
-    const formattedAssignments = assignments.map((assignment) => ({
+    const format = (assignment, isManager = false) => ({
       assignmentId: assignment.id,
       rateeUserId: assignment.rateeUserId,
       rateeEmail: assignment.rateeEmail,
@@ -87,8 +114,13 @@ export async function GET(request: NextRequest) {
         RatingValue: r.ratingValue,
         Comment: r.comment || '',
       })),
-    }));
+      source: isManager ? 'manager' : 'admin',
+    });
 
+    const formattedAdmin = adminAssignments.map(a => format(a, false));
+    const formattedManager = managerAssignments.map(a => format(a, true));
+
+    // No deduplication, just return all assignments
     return NextResponse.json({
       period: {
         id: activePeriod.id,
@@ -99,7 +131,8 @@ export async function GET(request: NextRequest) {
         CategoryName: c.categoryName,
         SortOrder: c.sortOrder,
       })),
-      assignments: formattedAssignments,
+      adminAssignments: formattedAdmin,
+      managerAssignments: formattedManager,
     });
   } catch (error) {
     console.error('Error fetching assignments:', error);
