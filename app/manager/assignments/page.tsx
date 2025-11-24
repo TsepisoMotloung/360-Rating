@@ -152,7 +152,9 @@ function ManagerAssignmentsContent() {
       const data = await response.json();
 
       if (response.ok || response.status === 207) {
-        setMessage('Assignment created successfully!');
+        const createdItem = Array.isArray(data.created) ? data.created[0] : null;
+        const sent = createdItem?.emailSent === true;
+        setMessage(sent ? `Assignment created — email sent to ${newRaterEmail}` : `Assignment created — failed to send email to ${newRaterEmail}`);
         setNewRaterEmail('');
         setNewRateeEmail('');
         setNewRelationship(1);
@@ -236,7 +238,7 @@ function ManagerAssignmentsContent() {
             </div>
             <button
               onClick={() => setShowAddForm(!showAddForm)}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
+              className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
             >
               <Plus className="w-5 h-5" />
               Add Assignment
@@ -317,7 +319,7 @@ function ManagerAssignmentsContent() {
               <div className="flex gap-4 mt-4">
                 <button
                   onClick={handleAddAssignment}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-all"
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-all"
                 >
                   Create Assignment
                 </button>

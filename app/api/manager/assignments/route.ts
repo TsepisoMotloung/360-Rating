@@ -1,7 +1,8 @@
 import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
-import { extractAuthParams } from '@/lib/params';
+import { extractAuthParams, buildAuthToken } from '@/lib/params';
+import { sendAssignmentNotificationEmail } from '@/lib/email';
 
 export async function GET(request: NextRequest) {
   try {
@@ -175,7 +176,28 @@ export async function POST(request: NextRequest) {
               rateePosition: assignment.rateePosition || null,
             },
           });
-          return { success: true, assignment: result };
+
+          // Send notification email to rater and capture result
+          let emailSent = false;
+          try {
+            const raterUser = await prisma.tblUser.findFirst({ where: { Username: assignment.raterEmail }, select: { FName: true, Surname: true } });
+            const rateeUser = await prisma.tblUser.findFirst({ where: { Username: assignment.rateeEmail }, select: { FName: true, Surname: true } });
+            const raterName = raterUser ? `${(raterUser.FName || '').trim()} ${(raterUser.Surname || '').trim()}`.trim() : assignment.raterEmail;
+            const rateeName = rateeUser ? `${(rateeUser.FName || '').trim()} ${(rateeUser.Surname || '').trim()}`.trim() : assignment.rateeEmail;
+
+            const token = buildAuthToken(String(rater.UserID), assignment.raterEmail);
+            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3000';
+            const ratingLink = `${baseUrl}/rater?auth=${encodeURIComponent(token)}`;
+
+            emailSent = await sendAssignmentNotificationEmail(assignment.raterEmail, raterName, rateeName, assignment.rateeEmail, period.periodName, ratingLink).catch((e) => {
+              console.error('Failed to send manager assignment notification:', e);
+              return false;
+            });
+          } catch (e) {
+            console.warn('Manager assignment notification attempt failed (non-fatal):', e);
+          }
+
+          return { success: true, assignment: result, emailSent };
         } catch (error: any) {
           if (error.code === 'P2002') {
             return { success: false, error: 'Assignment already exists' };
@@ -186,18 +208,30 @@ export async function POST(request: NextRequest) {
     );
 
     const failed = results.filter(r => !r.success);
+    const created = results
+      .filter((r): r is { success: true; assignment: any; emailSent: boolean } => r.success === true && !!(r as any).assignment)
+      .map(r => ({
+        id: r.assignment.id,
+        raterId: r.assignment.raterUserId,
+        rateeId: r.assignment.rateeUserId,
+        positionId: r.assignment.raterPosition || null,
+        raterEmail: r.assignment.raterEmail,
+        emailSent: r.emailSent || false,
+      }));
+
     if (failed.length > 0) {
       return NextResponse.json(
         {
           success: false,
-          message: `Created ${results.length - failed.length} assignments. ${failed.length} already exist.`,
+          created,
+          message: `Created ${created.length} assignments. ${failed.length} already exist.`,
         },
         { status: 207 }
       );
     }
 
     return NextResponse.json(
-      { success: true, created: results.length },
+      { success: true, created },
       { status: 201 }
     );
   } catch (error) {

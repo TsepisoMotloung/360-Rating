@@ -161,7 +161,7 @@ function ManagerDashboardContent() {
               <XAxis dataKey="CategoryName" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="AverageScore" fill="#3b82f6" />
+              <Bar dataKey="AverageScore" fill="#dc2626" />
             </BarChart>
           </ResponsiveContainer>
         </div>

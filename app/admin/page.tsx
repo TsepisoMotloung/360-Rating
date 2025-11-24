@@ -62,7 +62,7 @@ function AdminContent() {
     return (
       <MainLayout userEmail={accessEmail} userRole="admin" userAccess={access} auth={auth || ''}>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-red-600" />
         </div>
       </MainLayout>
     );
@@ -237,7 +237,7 @@ export default function AdminDashboard() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-red-600" />
       </div>
     }>
       <AdminContent />

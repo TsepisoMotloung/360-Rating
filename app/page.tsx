@@ -90,7 +90,7 @@ function HomeContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
@@ -180,7 +180,7 @@ function HomeContent() {
               )}
 
               {!userEmail && (
-                <div className="text-center text-gray-600 mb-8 bg-blue-50 border-2 border-blue-200 rounded-xl p-6 inline-block">
+                <div className="text-center text-gray-600 mb-8 bg-red-50 border-2 border-red-200 rounded-xl p-6 inline-block">
                   <p className="text-lg font-semibold">Please log in to access the rating system</p>
                 </div>
               )}
@@ -239,7 +239,7 @@ export default function Home() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
       </div>
     }>
       <HomeContent />

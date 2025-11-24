@@ -153,7 +153,7 @@ export default function AdminsClient() {
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               placeholder="admin@example.com"
-              className="col-span-2 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="col-span-2 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
             />
             <button onClick={handleAdd} className={`px-4 py-2 ${THEME.primary.bg} ${THEME.primary.bgHover} text-white rounded-lg flex items-center gap-2`}>
               <UserPlus className="w-4 h-4" /> Add
@@ -164,7 +164,7 @@ export default function AdminsClient() {
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
               placeholder="Optional description"
-              className="w-full mt-2 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full mt-2 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
             />
           </div>
         </div>

@@ -184,7 +184,8 @@ function AssignmentsContent() {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage('Assignment created successfully!');
+        const sent = data.emailSent === true;
+        setMessage(sent ? `Assignment created — email sent to ${newRaterEmail}` : `Assignment created — failed to send email to ${newRaterEmail}`);
         setNewRaterEmail('');
         setNewRateeEmail('');
         setNewRelationship(1);
@@ -428,7 +429,7 @@ function AssignmentsContent() {
                 placeholder="Search by email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
               />
             </div>
             <button
@@ -481,7 +482,7 @@ function AssignmentsContent() {
                     value={newRaterEmail}
                     onChange={(e) => setNewRaterEmail(e.target.value)}
                     placeholder="rater@alliance.co.ls"
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -493,7 +494,7 @@ function AssignmentsContent() {
                     value={newRateeEmail}
                     onChange={(e) => setNewRateeEmail(e.target.value)}
                     placeholder="ratee@alliance.co.ls"
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -503,7 +504,7 @@ function AssignmentsContent() {
                   <select
                     value={newRelationship}
                     onChange={(e) => setNewRelationship(parseInt(e.target.value, 10))}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   >
                     <option value={1}>Peer</option>
                     <option value={2}>Supervisor</option>
@@ -522,7 +523,7 @@ function AssignmentsContent() {
                     value={newRaterPosition}
                     onChange={(e) => setNewRaterPosition(e.target.value)}
                     placeholder="e.g., Manager, Coordinator"
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -534,7 +535,7 @@ function AssignmentsContent() {
                     value={newRateePosition}
                     onChange={(e) => setNewRateePosition(e.target.value)}
                     placeholder="e.g., Manager, Coordinator"
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -607,7 +608,7 @@ function AssignmentsContent() {
                       expandedRatee === group.rateeEmail ? null : group.rateeEmail
                     )
                   }
-                  className={`w-full px-6 py-5 flex items-center justify-between hover:bg-blue-50 transition-colors text-left`}
+                  className={`w-full px-6 py-5 flex items-center justify-between hover:bg-red-50 transition-colors text-left`}
                 >
                   <div className="flex items-center gap-4 flex-1">
                     <input
@@ -615,7 +616,7 @@ function AssignmentsContent() {
                       checked={group.raters.every((r) => selectedAssignments.has(r.AssignmentID))}
                       onChange={() => toggleRateeGroupSelection(group)}
                       onClick={(e) => e.stopPropagation()}
-                      className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                      className="w-5 h-5 text-red-600 rounded focus:ring-2 focus:ring-red-500 cursor-pointer"
                     />
                     <div>
                       <div className="flex items-center gap-3">

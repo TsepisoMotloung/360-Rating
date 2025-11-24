@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import prisma from '@/lib/db';
 import { validateUser } from '@/lib/auth';
-import { extractAuthParams } from '@/lib/params';
+import { extractAuthParams, buildAuthToken } from '@/lib/params';
+import { sendAssignmentNotificationEmail } from '@/lib/email';
 
 // GET all assignments
 export async function GET(request: NextRequest) {
@@ -136,9 +137,42 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // send notification to the rater and capture result
+    let emailSent = false;
+    try {
+      // fetch readable names if present
+      const raterUser = await prisma.tblUser.findFirst({ where: { Username: raterEmail }, select: { FName: true, Surname: true } });
+      const rateeUser = await prisma.tblUser.findFirst({ where: { Username: rateeEmail }, select: { FName: true, Surname: true } });
+      const raterName = raterUser ? `${(raterUser.FName || '').trim()} ${(raterUser.Surname || '').trim()}`.trim() : raterEmail;
+      const rateeName = rateeUser ? `${(rateeUser.FName || '').trim()} ${(rateeUser.Surname || '').trim()}`.trim() : rateeEmail;
+
+      // build a login link for the rater
+      const token = buildAuthToken(String(raterValidation.userId), raterEmail);
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3000';
+      const ratingLink = `${baseUrl}/rater?auth=${encodeURIComponent(token)}`;
+
+      // optionally fetch period name
+      let periodName: string | undefined = undefined;
+      try {
+        const p = await prisma.ratingPeriod.findUnique({ where: { id: periodId } });
+        periodName = p?.periodName;
+      } catch (e) {
+        // ignore
+      }
+
+      // attempt to send and capture result
+      emailSent = await sendAssignmentNotificationEmail(raterEmail, raterName, rateeName, rateeEmail, periodName || '', ratingLink).catch((e) => {
+        console.error('Failed to send assignment notification:', e);
+        return false;
+      });
+    } catch (err) {
+      console.warn('Notification attempt failed (non-fatal):', err);
+    }
+
     return NextResponse.json({
       success: true,
       assignmentId: assignment.id,
+      emailSent,
     });
   } catch (error) {
     console.error('Error creating assignment:', error);
