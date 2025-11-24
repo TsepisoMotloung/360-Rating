@@ -2,13 +2,21 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
-// Use server-side API route for validation to avoid Server Actions header restrictions
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { CheckCircle, Users, BarChart3, ArrowRight } from 'lucide-react';
+import {
+  CheckCircle,
+  Users,
+  BarChart3,
+  ArrowRight,
+  LogIn,
+  Shield,
+  Zap,
+  Target,
+  Award
+} from 'lucide-react';
 
 function HomeContent() {
   const router = useRouter();
@@ -29,7 +37,6 @@ function HomeContent() {
       }
 
       try {
-        // Decode auth token: base64(uid:email)
         const decoded = Buffer.from(auth, 'base64').toString('utf-8');
         const [uid, email] = decoded.split(':');
 
@@ -40,12 +47,10 @@ function HomeContent() {
 
         setUserId(parseInt(uid, 10));
 
-        // Validate user and check their role via server API route
         let validation: any = { isValid: false };
         try {
           const res = await fetch(`/api/auth/validate?auth=${encodeURIComponent(auth)}`);
           if (res.ok) validation = await res.json();
-          else console.warn('Auth validation API responded with', res.status);
         } catch (err) {
           console.error('Failed to call auth validation API', err);
         }
@@ -59,19 +64,10 @@ function HomeContent() {
 
         const isAdmin = validation.isAdmin || false;
         const isManager = validation.isManager || false;
+        const hasRatings = !isAdmin && !isManager;
 
-        // Check if user has rater assignments
-        const hasRatings = !isAdmin && !isManager; // Show rater button if not admin or manager
-
-        const access = {
-          isAdmin,
-          isManager,
-          hasRatings,
-        };
-
-        setUserAccess(access);
-        // Default to first available role, but let user select
-        setSelectedRole(isAdmin ? 'admin' : isManager ? 'manager' : hasRatings ? 'rater' : null);
+        setUserAccess({ isAdmin, isManager, hasRatings });
+        setSelectedRole(isAdmin ? 'admin' : isManager ? 'manager' : 'rater');
       } catch (err) {
         console.error('Auth error:', err);
       } finally {
@@ -89,9 +85,9 @@ function HomeContent() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-14 w-14 border-4 border-gray-200 border-t-red-600 mx-auto"></div>
+          <p className="text-gray-600 font-medium">Loading...</p>
         </div>
       </div>
     );
@@ -100,136 +96,170 @@ function HomeContent() {
   return (
     <>
       <Navbar userEmail={userEmail} userRole={selectedRole || undefined} auth={auth || ''} />
-      <div className="flex-1 pt-20">
-        <div className="min-h-screen bg-gradient-to-br from-white via-red-50 to-white">
-          {/* Hero Section */}
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+
+      <div className="pt-20">
+        <div className="min-h-screen bg-white">
+          <div className="max-w-6xl mx-auto px-4 py-16">
+
+            {/* HERO */}
             <div className="text-center mb-16">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-red-500 to-red-600 rounded-xl mb-6 shadow-lg">
-                <span className="text-white font-bold text-4xl">360</span>
-              </div>
-              <h1 className="text-5xl md:text-6xl font-black text-gray-900 mb-4 bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent">
-                360-Degree Rating System
+              <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 leading-tight mb-4">
+                <span className="text-red-600">360-Degree</span> Rating System
               </h1>
-              <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
-                Comprehensive employee feedback and performance evaluation platform for data-driven organizational decisions.
+
+              <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
+                A powerful employee performance evaluation platform designed for modern organizations.
               </p>
+            </div>
 
-              {/* Role Selection */}
-              {userEmail && userAccess && (
-                <div className="flex flex-col gap-8 mb-12">
-                  {/* Role Pills - Select which role to use */}
-                  <div className="flex flex-wrap justify-center gap-3">
-                    {userAccess.isAdmin && (
-                      <button
-                        onClick={() => setSelectedRole('admin')}
-                        className={`px-6 py-3 rounded-full font-semibold transition-all ${
-                          selectedRole === 'admin'
-                            ? 'bg-red-600 text-white shadow-lg shadow-red-200'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        Admin
-                      </button>
-                    )}
-                    {userAccess.isManager && (
-                      <button
-                        onClick={() => setSelectedRole('manager')}
-                        className={`px-6 py-3 rounded-full font-semibold transition-all ${
-                          selectedRole === 'manager'
-                            ? 'bg-red-600 text-white shadow-lg shadow-red-200'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        Manager
-                      </button>
-                    )}
-                    {userAccess.hasRatings && (
-                      <button
-                        onClick={() => setSelectedRole('rater')}
-                        className={`px-6 py-3 rounded-full font-semibold transition-all ${
-                          selectedRole === 'rater'
-                            ? 'bg-red-600 text-white shadow-lg shadow-red-200'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        Rater
-                      </button>
-                    )}
-                  </div>
+            {/* AUTH AREA */}
+            {userEmail && userAccess ? (
+              <div className="max-w-xl mx-auto bg-gray-50 border border-gray-200 rounded-xl p-8 shadow-sm">
+                
+                {/* TOP TEXT */}
+                <h3 className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto text-center">
+                  Choose how you want to continue
+                </h3>
 
-                  {/* Action Buttons based on selected role */}
-                  {selectedRole && (
+                <div className="h-8" />
+                {/* ROLE BUTTONS */}
+                <div className="flex flex-wrap gap-4 justify-center mb-10">
+
+                  {userAccess.isAdmin && (
                     <button
-                      onClick={() =>
-                        router.push(getAuthUrl(`/${selectedRole === 'admin' ? 'admin' : selectedRole === 'manager' ? 'manager' : 'rater'}`))
-                      }
-                      className="mx-auto flex items-center justify-center space-x-2 px-8 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:shadow-lg hover:shadow-red-200 transition-all font-bold text-lg shadow-md"
+                      onClick={() => setSelectedRole('admin')}
+                      className={`px-6 py-3 rounded-xl border text-lg font-medium flex items-center gap-2
+                        ${selectedRole === 'admin'
+                        ? 'bg-red-600 text-white border-red-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-red-600'}
+                      `}
                     >
-                      <span>
-                        {selectedRole === 'admin'
-                          ? 'Go to Admin Dashboard'
-                          : selectedRole === 'manager'
-                          ? 'Go to Manager Portal'
-                          : 'Start Rating'}
-                      </span>
-                      <ArrowRight size={24} />
+                      <Shield size={22} />
+                      Admin Dashboard
+                    </button>
+                  )}
+
+                  {userAccess.isManager && (
+                    <button
+                      onClick={() => setSelectedRole('manager')}
+                      className={`px-6 py-3 rounded-xl border text-lg font-medium flex items-center gap-2
+                        ${selectedRole === 'manager'
+                        ? 'bg-red-600 text-white border-red-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-red-600'}
+                      `}
+                    >
+                      <Target size={22} />
+                      Manager Dashboard
+                    </button>
+                  )}
+
+                  {userAccess.hasRatings && (
+                    <button
+                      onClick={() => setSelectedRole('rater')}
+                      className={`px-6 py-3 rounded-xl border text-lg font-medium flex items-center gap-2
+                        ${selectedRole === 'rater'
+                        ? 'bg-red-600 text-white border-red-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-red-600'}
+                      `}
+                    >
+                      <CheckCircle size={22} />
+                      Rater Portal
                     </button>
                   )}
                 </div>
-              )}
 
-              {!userEmail && (
-                <div className="text-center text-gray-600 mb-8 bg-red-50 border-2 border-red-200 rounded-xl p-6 inline-block">
-                  <p className="text-lg font-semibold">Please log in to access the rating system</p>
-                </div>
-              )}
-            </div>
+                {/* ENTER BUTTON */}
+                <button
+                  onClick={() =>
+                    router.push(
+                      getAuthUrl(
+                        selectedRole === 'admin'
+                          ? '/admin'
+                          : selectedRole === 'manager'
+                          ? '/manager'
+                          : '/rater'
+                      )
+                    )
+                  }
+                  className="w-full py-4 bg-red-600 hover:bg-red-700 text-white text-lg rounded-xl shadow-md inline-flex items-center justify-center gap-3 transition"
+                >
+                  {selectedRole === 'admin' && (
+                    <>
+                      <Shield size={22} />
+                      Enter Admin Dashboard
+                    </>
+                  )}
 
-            {/* Features Section */}
-            <div className="grid md:grid-cols-3 gap-8 mb-16">
-              <div className="bg-white p-8 rounded-xl shadow-md hover:shadow-2xl transition-all border-t-4 border-red-500">
-                <div className="flex items-center justify-center w-14 h-14 bg-red-100 rounded-lg mb-4 shadow-sm">
-                  <Users className="text-red-600" size={28} />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Multi-Role System</h3>
-                <p className="text-gray-600">
-                  Support for administrators, managers, and raters with role-specific permissions and workflows.
-                </p>
+                  {selectedRole === 'manager' && (
+                    <>
+                      <Target size={22} />
+                      Enter Manager Portal
+                    </>
+                  )}
+
+                  {selectedRole === 'rater' && (
+                    <>
+                      <Award size={22} />
+                      Start Your Ratings
+                    </>
+                  )}
+
+                  <ArrowRight size={22} />
+                </button>
               </div>
-
-              <div className="bg-white p-8 rounded-xl shadow-md hover:shadow-2xl transition-all border-t-4 border-red-500">
-                <div className="flex items-center justify-center w-14 h-14 bg-red-100 rounded-lg mb-4 shadow-sm">
-                  <CheckCircle className="text-red-600" size={28} />
+            ) : (
+              /* LOGIN CTA */
+              <div className="max-w-md mx-auto bg-white shadow-lg border border-gray-200 p-8 rounded-xl text-center">
+                <div className="mx-auto w-14 h-14 rounded-xl bg-red-600 flex items-center justify-center mb-4">
+                  <LogIn size={30} className="text-white" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Easy Assignments</h3>
-                <p className="text-gray-600">
-                  Managers can quickly create and manage rating assignments with position tracking and CSV import.
-                </p>
-              </div>
 
-              <div className="bg-white p-8 rounded-xl shadow-md hover:shadow-2xl transition-all border-t-4 border-red-500">
-                <div className="flex items-center justify-center w-14 h-14 bg-red-100 rounded-lg mb-4 shadow-sm">
-                  <BarChart3 className="text-red-600" size={28} />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Detailed Reports</h3>
-                <p className="text-gray-600">
-                  Comprehensive analytics and visualizations to track feedback and identify trends.
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Sign In</h3>
+                <p className="text-gray-600 mb-6">
+                  Access your dashboard to begin your evaluations.
                 </p>
-              </div>
-            </div>
 
-            {/* Info Section */}
-            {userEmail && (
-              <div className="bg-gradient-to-r from-red-50 to-white border-2 border-red-200 rounded-xl p-8 text-center shadow-md">
-                <p className="text-gray-700 font-semibold text-lg">
-                  <span className="text-red-600">Welcome back!</span> Logged in as: <span className="text-red-600 font-bold">{userEmail}</span>
-                </p>
+                <button
+                  onClick={() => router.push('/login')}
+                  className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-lg font-medium inline-flex items-center justify-center gap-3 shadow-md"
+                >
+                  <LogIn size={22} />
+                  Continue
+                </button>
               </div>
             )}
+
+            {/* FEATURES */}
+            <div className="grid md:grid-cols-3 gap-8 mt-20">
+              <div className="p-8 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition">
+                <Users size={36} className="text-red-600 mb-4" />
+                <h3 className="text-xl font-bold mb-2 text-gray-900">Multi-Role System</h3>
+                <p className="text-gray-600">
+                  Manage administrators, managers, and raters with structured permission control.
+                </p>
+              </div>
+
+              <div className="p-8 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition">
+                <Zap size={36} className="text-red-600 mb-4" />
+                <h3 className="text-xl font-bold mb-2 text-gray-900">Smart Assignments</h3>
+                <p className="text-gray-600">
+                  Create, track, and automate rating assignments effortlessly.
+                </p>
+              </div>
+
+              <div className="p-8 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition">
+                <BarChart3 size={36} className="text-red-600 mb-4" />
+                <h3 className="text-xl font-bold mb-2 text-gray-900">Analytics & Insights</h3>
+                <p className="text-gray-600">
+                  Visual dashboards with real-time evaluation insights.
+                </p>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
+
       <Footer />
     </>
   );
@@ -237,11 +267,13 @@ function HomeContent() {
 
 export default function Home() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 border-t-red-600" />
+        </div>
+      }
+    >
       <HomeContent />
     </Suspense>
   );
