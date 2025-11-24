@@ -64,7 +64,7 @@ function HomeContent() {
 
         const isAdmin = validation.isAdmin || false;
         const isManager = validation.isManager || false;
-        const hasRatings = !isAdmin && !isManager;
+        const hasRatings = true;
 
         setUserAccess({ isAdmin, isManager, hasRatings });
         setSelectedRole(isAdmin ? 'admin' : isManager ? 'manager' : 'rater');
@@ -135,7 +135,7 @@ function HomeContent() {
                       `}
                     >
                       <Shield size={22} />
-                      Admin Dashboard
+                      Admin
                     </button>
                   )}
 
@@ -149,7 +149,7 @@ function HomeContent() {
                       `}
                     >
                       <Target size={22} />
-                      Manager Dashboard
+                      Manager
                     </button>
                   )}
 
@@ -163,7 +163,7 @@ function HomeContent() {
                       `}
                     >
                       <CheckCircle size={22} />
-                      Rater Portal
+                      Rater
                     </button>
                   )}
                 </div>
@@ -199,7 +199,7 @@ function HomeContent() {
 
                   {selectedRole === 'rater' && (
                     <>
-                      <Award size={22} />
+                      <CheckCircle size={22} />
                       Start Your Ratings
                     </>
                   )}
