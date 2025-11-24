@@ -254,7 +254,7 @@ function RaterContent() {
     return (
       <MainLayout userEmail={accessEmail} userRole="rater" userAccess={access} auth={auth || ''}>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-red-600" />
         </div>
       </MainLayout>
     );

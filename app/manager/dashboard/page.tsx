@@ -251,7 +251,7 @@ export default function ManagerDashboard() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-white">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-red-600" />
         </div>
       }
     >
