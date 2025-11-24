@@ -32,7 +32,7 @@ Thank you for taking the time to provide valuable feedback.
 
 Best regards,
 360° Rating System
-Alliance Investment Company
+AIC
 `;
 
     await transporter.sendMail({

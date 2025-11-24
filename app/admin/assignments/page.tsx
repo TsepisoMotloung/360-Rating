@@ -182,7 +182,7 @@ function AssignmentsContent() {
       });
 
       const data = await response.json();
-
+      console.log(data);
       if (response.ok) {
         const sent = data.emailSent === true;
         setMessage(sent ? `Assignment created — email sent to ${newRaterEmail}` : `Assignment created — failed to send email to ${newRaterEmail}`);
