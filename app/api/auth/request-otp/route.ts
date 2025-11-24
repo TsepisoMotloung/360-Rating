@@ -71,13 +71,11 @@ export async function POST(request: Request) {
 
 Your OTP for logging into the 360° Rating System is: ${otp}
 
-This OTP will expire in 10 minutes.
-
-If you did not request this, please ignore this email.
+This OTP will expire in 10 minutes. If you did not request this, please ignore this email.
 
 Best regards,
 360° Rating System
-Alliance Investment Company`,
+AIC`,
       html: `
 <html>
   <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto;">
