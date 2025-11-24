@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import MainLayout from "@/components/MainLayout";
 import useUserAccess from "@/lib/useUserAccess";
 import { Loader2, CheckCircle, UserCheck } from "lucide-react";
+import { THEME } from "@/lib/theme";
+import { subscribe } from "@/lib/sync";
 
 export default function ManagerRatingPageContent() {
   const searchParams = useSearchParams();
@@ -20,6 +22,13 @@ export default function ManagerRatingPageContent() {
       return;
     }
     fetchAssignments();
+
+    const unsub = subscribe((ev) => {
+      if (ev === 'assignments-updated' || ev === 'responses-updated') {
+        fetchAssignments();
+      }
+    });
+    return () => unsub();
   }, [auth]);
 
   const fetchAssignments = async () => {
@@ -45,7 +54,7 @@ export default function ManagerRatingPageContent() {
     return (
       <MainLayout userEmail={accessEmail} userRole="manager" userAccess={access} auth={auth || ""}>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <Loader2 className={`w-8 h-8 animate-spin ${THEME.primary.text}`} />
         </div>
       </MainLayout>
     );

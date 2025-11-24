@@ -8,6 +8,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { Loader2, Users, CheckCircle, Clock, TrendingUp } from 'lucide-react';
 import MainLayout from '@/components/MainLayout';
 import useUserAccess from '@/lib/useUserAccess';
+import { THEME } from '@/lib/theme';
+import { subscribe } from '@/lib/sync';
 
 function ManagerDashboardContent() {
   const searchParams = useSearchParams();
@@ -28,6 +30,13 @@ function ManagerDashboardContent() {
       return;
     }
     fetchDashboardData();
+
+    const unsub = subscribe((ev) => {
+      if (ev === 'assignments-updated' || ev === 'responses-updated') {
+        fetchDashboardData();
+      }
+    });
+    return () => unsub();
   }, [auth]);
 
   const fetchDashboardData = async () => {
@@ -61,7 +70,7 @@ function ManagerDashboardContent() {
     return (
       <MainLayout userEmail={accessEmail} userRole="manager" userAccess={access} auth={auth || ''}>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <Loader2 className={`w-8 h-8 animate-spin ${THEME.primary.text}`} />
         </div>
       </MainLayout>
     );

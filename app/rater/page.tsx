@@ -8,7 +8,9 @@ import Accordion from '@/components/Accordion';
 import RatingScale from '@/components/RatingScale';
 import MainLayout from '@/components/MainLayout';
 import useUserAccess from '@/lib/useUserAccess';
+import { THEME, alertClasses } from '@/lib/theme';
 import { Loader2, Send } from 'lucide-react';
+import { publish } from '@/lib/sync';
 
 type TabType = 'admin' | 'manager' | 'archived';
 
@@ -171,8 +173,12 @@ function RaterContent() {
 
       if (response.ok) {
         setMessage('Rating submitted successfully!');
-        setTimeout(() => setMessage(''), 3000);
-        await fetchAssignments();
+        // Auto-refresh immediately after successful submission
+        setTimeout(() => {
+          fetchAssignments();
+          setMessage('');
+          try { publish('responses-updated'); publish('assignments-updated'); } catch(e) {}
+        }, 500);
       } else {
         throw new Error('Failed to submit rating');
       }
@@ -224,8 +230,12 @@ function RaterContent() {
 
       if (response.ok) {
         setMessage('All ratings submitted successfully!');
-        setTimeout(() => setMessage(''), 3000);
-        await fetchAssignments();
+        // Auto-refresh immediately after successful submission
+        setTimeout(() => {
+          fetchAssignments();
+          setMessage('');
+          try { publish('responses-updated'); publish('assignments-updated'); } catch(e) {}
+        }, 500);
       } else {
         throw new Error('Failed to submit all ratings');
       }
@@ -375,7 +385,7 @@ function RaterContent() {
                   <button
                     onClick={() => submitSingleRating(assignment.assignmentId)}
                     disabled={submitting}
-                    className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className={`w-full ${THEME.primary.bg} ${THEME.primary.bgHover} text-white py-3 px-6 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
                   >
                     {submitting ? (
                       <>
@@ -417,8 +427,8 @@ function RaterContent() {
       {message && (
         <div className={`rounded-lg border p-4 mb-6 ${
           message.includes('success') 
-            ? 'bg-green-50 border-green-200 text-green-800' 
-            : 'bg-blue-50 border-blue-200 text-blue-800'
+            ? alertClasses.success
+            : alertClasses.info
         }`}>
           <p>{message}</p>
         </div>
@@ -434,7 +444,7 @@ function RaterContent() {
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div
-            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+            className={`${THEME.primary.bg} h-2 rounded-full transition-all duration-300`}
             style={{
               width: `${(adminAssignments.length + managerAssignments.length + archivedAssignments.length) > 0 ? (archivedAssignments.length / (adminAssignments.length + managerAssignments.length + archivedAssignments.length)) * 100 : 0}%`,
             }}
@@ -449,7 +459,7 @@ function RaterContent() {
             onClick={() => setActiveTab('admin')}
             className={`flex-1 px-6 py-3 font-medium transition-colors ${
               activeTab === 'admin'
-                ? 'border-b-2 border-blue-600 text-blue-600'
+                ? `border-b-2 ${THEME.primary.border} ${THEME.primary.text}`
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
@@ -459,7 +469,7 @@ function RaterContent() {
             onClick={() => setActiveTab('manager')}
             className={`flex-1 px-6 py-3 font-medium transition-colors ${
               activeTab === 'manager'
-                ? 'border-b-2 border-blue-600 text-blue-600'
+                ? `border-b-2 ${THEME.primary.border} ${THEME.primary.text}`
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
@@ -469,7 +479,7 @@ function RaterContent() {
             onClick={() => setActiveTab('archived')}
             className={`flex-1 px-6 py-3 font-medium transition-colors ${
               activeTab === 'archived'
-                ? 'border-b-2 border-blue-600 text-blue-600'
+                ? `border-b-2 ${THEME.primary.border} ${THEME.primary.text}`
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
@@ -491,7 +501,7 @@ function RaterContent() {
           <button
             onClick={submitAllRatings}
             disabled={submitting}
-            className="w-full bg-green-600 text-white py-4 px-6 rounded-lg font-medium text-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className={`w-full ${THEME.success.bg} ${THEME.success.bgHover} text-white py-4 px-6 rounded-lg font-medium text-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
           >
             {submitting ? (
               <>

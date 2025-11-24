@@ -7,6 +7,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2, Plus, Trash2, Search, ChevronDown, ChevronUp, AlertCircle, CheckCircle } from 'lucide-react';
 import MainLayout from '@/components/MainLayout';
 import useUserAccess from '@/lib/useUserAccess';
+import { subscribe, publish } from '@/lib/sync';
+import { THEME, alertClasses } from '@/lib/theme';
 
 interface Assignment {
   AssignmentID: number;
@@ -74,6 +76,15 @@ function AssignmentsContent() {
       return;
     }
     fetchAssignments();
+
+    // subscribe to external updates
+    const unsub = subscribe((ev) => {
+      if (ev === 'assignments-updated' || ev === 'responses-updated') {
+        fetchAssignments();
+      }
+    });
+
+    return () => unsub();
   }, [auth]);
 
   useEffect(() => {
@@ -181,6 +192,7 @@ function AssignmentsContent() {
         setNewRateePosition('');
         setShowAddForm(false);
         await fetchAssignments();
+        try { publish('assignments-updated'); } catch(e) {}
       } else {
         setMessage(data.error || 'Failed to create assignment');
       }
@@ -244,6 +256,7 @@ function AssignmentsContent() {
         setMessage('Relationship updated');
         setEditingAssignmentId(null);
         await fetchAssignments();
+        try { publish('assignments-updated'); } catch(e) {}
       }
     } catch (err) {
       console.error('Failed to save relationship', err);
@@ -267,6 +280,7 @@ function AssignmentsContent() {
       if (response.ok) {
         setMessage('Assignment deleted successfully!');
         await fetchAssignments();
+        try { publish('assignments-updated'); } catch(e) {}
       } else {
         throw new Error('Failed to delete');
       }
@@ -346,6 +360,7 @@ function AssignmentsContent() {
         }`
       );
       await fetchAssignments();
+      try { publish('assignments-updated'); } catch(e) {}
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Error in bulk delete:', error);
@@ -360,7 +375,7 @@ function AssignmentsContent() {
     return (
       <MainLayout userEmail={accessEmail} userRole="admin" userAccess={access} auth={auth || ''}>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-red-600" />
+          <Loader2 className={`w-8 h-8 animate-spin ${THEME.primary.text}`} />
         </div>
       </MainLayout>
     );
@@ -390,8 +405,8 @@ function AssignmentsContent() {
           <div
             className={`rounded-lg border p-4 mb-6 flex items-center gap-3 ${
               message.includes('success')
-                ? 'bg-green-50 border-green-200 text-green-800'
-                : 'bg-red-50 border-red-200 text-red-800'
+                ? alertClasses.success
+                : alertClasses.error
             }`}
           >
             {message.includes('success') ? (
@@ -413,12 +428,12 @@ function AssignmentsContent() {
                 placeholder="Search by email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               />
             </div>
             <button
               onClick={() => setShowAddForm(!showAddForm)}
-              className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
+              className={`px-6 py-3 ${THEME.primary.bg} ${THEME.primary.bgHover} text-white rounded-lg font-medium flex items-center gap-2 transition-all shadow-sm hover:shadow-md`}
             >
               <Plus className="w-5 h-5" />
               Add Assignment
@@ -427,23 +442,23 @@ function AssignmentsContent() {
 
           {/* Bulk Delete Toolbar */}
           {selectedAssignments.size > 0 && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
+            <div className={`p-4 ${THEME.error.bgLight} border ${THEME.error.border} rounded-lg flex items-center justify-between`}>
               <div className="flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-                <span className="font-semibold text-red-900">
+                <AlertCircle className={`w-5 h-5 ${THEME.error.text}`} />
+                <span className={`font-semibold ${THEME.error.textDark}`}>
                   {selectedAssignments.size} assignment{selectedAssignments.size !== 1 ? 's' : ''} selected
                 </span>
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => setSelectedAssignments(new Set())}
-                  className="px-4 py-2 bg-white text-red-700 border border-red-200 rounded-lg hover:bg-red-50 text-sm font-medium transition-all"
+                  className={`px-4 py-2 bg-white ${THEME.error.text} border ${THEME.error.border} rounded-lg hover:${THEME.error.bgLight} text-sm font-medium transition-all`}
                 >
                   Deselect All
                 </button>
                 <button
                   onClick={handleBulkDelete}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 text-sm font-medium transition-all"
+                  className={`px-4 py-2 ${THEME.error.bg} ${THEME.error.bgHover} text-white rounded-lg flex items-center gap-2 text-sm font-medium transition-all`}
                 >
                   <Trash2 className="w-4 h-4" />
                   Delete Selected
@@ -466,7 +481,7 @@ function AssignmentsContent() {
                     value={newRaterEmail}
                     onChange={(e) => setNewRaterEmail(e.target.value)}
                     placeholder="rater@alliance.co.ls"
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -478,7 +493,7 @@ function AssignmentsContent() {
                     value={newRateeEmail}
                     onChange={(e) => setNewRateeEmail(e.target.value)}
                     placeholder="ratee@alliance.co.ls"
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -488,7 +503,7 @@ function AssignmentsContent() {
                   <select
                     value={newRelationship}
                     onChange={(e) => setNewRelationship(parseInt(e.target.value, 10))}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value={1}>Peer</option>
                     <option value={2}>Supervisor</option>
@@ -507,7 +522,7 @@ function AssignmentsContent() {
                     value={newRaterPosition}
                     onChange={(e) => setNewRaterPosition(e.target.value)}
                     placeholder="e.g., Manager, Coordinator"
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -519,14 +534,14 @@ function AssignmentsContent() {
                     value={newRateePosition}
                     onChange={(e) => setNewRateePosition(e.target.value)}
                     placeholder="e.g., Manager, Coordinator"
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </div>
               <div className="flex gap-4 mt-4">
                 <button
                   onClick={handleAddAssignment}
-                  className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-all"
+                  className={`px-6 py-2 ${THEME.primary.bg} ${THEME.primary.bgHover} text-white rounded-lg font-medium transition-all`}
                 >
                   Create Assignment
                 </button>
@@ -559,7 +574,7 @@ function AssignmentsContent() {
           </div>
           <div className="bg-white rounded-lg p-6 border border-gray-100 shadow-sm">
             <p className="text-gray-600 text-sm font-medium mb-2">Completion Rate</p>
-            <p className="text-3xl font-bold text-red-600">
+            <p className={`text-3xl font-bold ${THEME.primary.text}`}>
               {assignments.length > 0
                 ? Math.round(
                     (assignments.filter((a) => a.IsCompleted).length / assignments.length) * 100
@@ -592,7 +607,7 @@ function AssignmentsContent() {
                       expandedRatee === group.rateeEmail ? null : group.rateeEmail
                     )
                   }
-                  className="w-full px-6 py-5 flex items-center justify-between hover:bg-red-50 transition-colors text-left"
+                  className={`w-full px-6 py-5 flex items-center justify-between hover:bg-blue-50 transition-colors text-left`}
                 >
                   <div className="flex items-center gap-4 flex-1">
                     <input
@@ -600,7 +615,7 @@ function AssignmentsContent() {
                       checked={group.raters.every((r) => selectedAssignments.has(r.AssignmentID))}
                       onChange={() => toggleRateeGroupSelection(group)}
                       onClick={(e) => e.stopPropagation()}
-                      className="w-5 h-5 text-red-600 rounded focus:ring-2 focus:ring-red-500 cursor-pointer"
+                      className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
                     />
                     <div>
                       <div className="flex items-center gap-3">
@@ -618,8 +633,8 @@ function AssignmentsContent() {
 
                   <div className="flex items-center gap-6">
                     <div className="text-right min-w-max">
-                      <div className="inline-block bg-red-50 px-4 py-2 rounded-lg">
-                        <p className="text-2xl font-bold text-red-600">
+                      <div className="inline-block bg-blue-50 px-4 py-2 rounded-lg">
+                        <p className="text-2xl font-bold text-blue-600">
                           {Math.round((group.completedCount / group.raters.length) * 100)}%
                         </p>
                         <p className="text-xs text-gray-600 font-medium">complete</p>
@@ -642,7 +657,7 @@ function AssignmentsContent() {
                           key={rater.AssignmentID}
                           className={`flex items-center justify-between p-4 rounded-lg border-l-4 transition-all ${
                             selectedAssignments.has(rater.AssignmentID)
-                              ? 'border-l-red-600 bg-red-50 border border-red-200'
+                              ? `border-l-blue-600 bg-blue-50 border border-blue-200`
                               : 'border-l-gray-300 bg-white border border-gray-100'
                           }`}
                         >
@@ -650,7 +665,7 @@ function AssignmentsContent() {
                             type="checkbox"
                             checked={selectedAssignments.has(rater.AssignmentID)}
                             onChange={() => toggleAssignmentSelection(rater.AssignmentID)}
-                            className="w-4 h-4 text-red-600 rounded focus:ring-2 focus:ring-red-500 cursor-pointer"
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
                           />
                           <div className="flex-1 ml-4">
                             <div className="flex items-center gap-3">
@@ -698,15 +713,15 @@ function AssignmentsContent() {
                                   <option value={3}>Manager</option>
                                   <option value={4}>Subordinate</option>
                                 </select>
-                                <button onClick={() => handleSaveRelationship(rater.AssignmentID)} className="px-2 py-1 bg-green-600 text-white rounded">Save</button>
+                                <button onClick={() => handleSaveRelationship(rater.AssignmentID)} className={`px-2 py-1 ${THEME.success.bg} ${THEME.success.bgHover} text-white rounded`}>Save</button>
                                 <button onClick={handleCancelEdit} className="px-2 py-1 bg-gray-100 rounded">Cancel</button>
                               </div>
                             ) : (
                               <>
-                                <button onClick={() => handleStartEdit(rater.AssignmentID, rater.Relationship)} className="px-2 py-1 bg-blue-50 text-blue-700 rounded">Edit</button>
+                                <button onClick={() => handleStartEdit(rater.AssignmentID, rater.Relationship)} className={`px-2 py-1 ${THEME.primary.bgLight} ${THEME.primary.text} rounded`}>Edit</button>
                                 <button
                                   onClick={() => handleDeleteAssignment(rater.AssignmentID)}
-                                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all hover:scale-110"
+                                  className={`p-2 ${THEME.error.text} hover:${THEME.error.bgLight} rounded-lg transition-all hover:scale-110`}
                                   title="Delete this assignment"
                                 >
                                   <Trash2 className="w-5 h-5" />
@@ -729,8 +744,8 @@ function AssignmentsContent() {
       {confirmDialog.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 transform transition-all">
-            <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
-              <AlertCircle className="w-6 h-6 text-red-600" />
+            <div className={`flex items-center justify-center w-12 h-12 mx-auto ${THEME.error.bgLight} rounded-full mb-4`}>
+              <AlertCircle className={`w-6 h-6 ${THEME.error.text}`} />
             </div>
 
             <h3 className="text-lg font-bold text-gray-900 text-center mb-2">
@@ -752,7 +767,7 @@ function AssignmentsContent() {
               </button>
               <button
                 onClick={confirmDialog.type === 'single' ? confirmSingleDelete : confirmBulkDelete}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-all"
+                className={`flex-1 px-4 py-2 ${THEME.error.bg} ${THEME.error.bgHover} text-white rounded-lg font-medium transition-all`}
               >
                 Delete
               </button>
@@ -769,7 +784,7 @@ export default function AdminAssignments() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-white">
-          <Loader2 className="w-8 h-8 animate-spin text-red-600" />
+          <Loader2 className={`w-8 h-8 animate-spin ${THEME.primary.text}`} />
         </div>
       }
     >

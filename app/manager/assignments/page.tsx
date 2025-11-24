@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2, Plus, Trash2, Search, ChevronDown, ChevronUp, AlertCircle, CheckCircle } from 'lucide-react';
 import MainLayout from '@/components/MainLayout';
 import useUserAccess from '@/lib/useUserAccess';
+import { subscribe, publish } from '@/lib/sync';
 
 interface Assignment {
   assignmentId: number;
@@ -55,6 +56,13 @@ function ManagerAssignmentsContent() {
       return;
     }
     fetchAssignments();
+
+    const unsub = subscribe((ev) => {
+      if (ev === 'assignments-updated' || ev === 'responses-updated') {
+        fetchAssignments();
+      }
+    });
+    return () => unsub();
   }, [auth]);
 
   useEffect(() => {
@@ -152,6 +160,7 @@ function ManagerAssignmentsContent() {
         setNewRateePosition('');
         setShowAddForm(false);
         await fetchAssignments();
+        try { publish('assignments-updated'); } catch(e) {}
       } else {
         setMessage(data.error || 'Failed to create assignment');
       }

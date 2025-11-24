@@ -5,6 +5,7 @@ import MainLayout from '@/components/MainLayout';
 import useUserAccess from '@/lib/useUserAccess';
 import { Loader2, Download } from 'lucide-react';
 import { useState } from 'react';
+import { THEME } from '@/lib/theme';
 
 export default function ManagerReportsPageContent() {
   const searchParams = useSearchParams();
@@ -72,7 +73,7 @@ export default function ManagerReportsPageContent() {
     return (
       <MainLayout userEmail={accessEmail} userRole="manager" userAccess={access} auth={auth || ''}>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <Loader2 className={`w-8 h-8 animate-spin ${THEME.primary.text}`} />
         </div>
       </MainLayout>
     );
@@ -137,7 +138,7 @@ export default function ManagerReportsPageContent() {
             <button
               onClick={handleGenerateReport}
               disabled={generating}
-              className="px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium transition-all"
+              className={`px-5 py-3 ${THEME.primary.bg} ${THEME.primary.bgHover} text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium transition-all`}
             >
               {generating ? (
                 <>

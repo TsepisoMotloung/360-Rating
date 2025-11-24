@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import MainLayout from '@/components/MainLayout';
 import useUserAccess from '@/lib/useUserAccess';
+import { THEME } from '@/lib/theme';
 
 export default function AdminImportClient() {
   const router = useRouter();
@@ -219,26 +220,26 @@ export default function AdminImportClient() {
           <p className="text-sm text-gray-600 mb-4">Upload JSON or CSV assignments. Emails are not exposed — an `auth` token is used.</p>
 
           <div className="mb-4 flex items-center gap-3">
-            <button onClick={downloadTemplateJson} className="px-3 py-1 bg-blue-600 text-white rounded">Download JSON Template</button>
-            <button onClick={downloadTemplateCsv} className="px-3 py-1 bg-blue-600 text-white rounded">Download CSV Template</button>
+            <button onClick={downloadTemplateJson} className={`px-3 py-1 ${THEME.primary.bg} text-white rounded`}>Download JSON Template</button>
+            <button onClick={downloadTemplateCsv} className={`px-3 py-1 ${THEME.primary.bg} text-white rounded`}>Download CSV Template</button>
           </div>
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">JSON File</label>
             <input type="file" accept="application/json" onChange={handleJsonFile} />
-            <button onClick={uploadJson} disabled={loading} className="ml-3 px-3 py-1 bg-green-600 text-white rounded">{loading ? 'Uploading...' : 'Upload JSON'}</button>
+            <button onClick={uploadJson} disabled={loading} className={`ml-3 px-3 py-1 ${THEME.success.bg} text-white rounded`}>{loading ? 'Uploading...' : 'Upload JSON'}</button>
           </div>
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">CSV File</label>
             <input ref={fileInputRef} type="file" accept="text/csv" onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)} />
-            <button onClick={uploadCsv} disabled={loading} className="ml-3 px-3 py-1 bg-green-600 text-white rounded">{loading ? 'Uploading...' : 'Upload CSV'}</button>
+            <button onClick={uploadCsv} disabled={loading} className={`ml-3 px-3 py-1 ${THEME.success.bg} text-white rounded`}>{loading ? 'Uploading...' : 'Upload CSV'}</button>
           </div>
 
           {loading && (
             <div className="mb-4">
               <div className="w-full bg-gray-200 rounded h-3 overflow-hidden">
-                <div className="h-3 bg-red-600" style={{ width: `${progress}%` }} />
+                <div className={`h-3 ${THEME.primary.bg}`} style={{ width: `${progress}%` }} />
               </div>
               <div className="text-sm text-gray-600 mt-2 flex items-center gap-2">
                 <span>Progress: {progress}%</span>
@@ -258,8 +259,8 @@ export default function AdminImportClient() {
               <div className="flex items-center justify-between mb-2">
                 <div className="text-sm font-medium">Failed Rows ({failedRows.length})</div>
                 <div className="flex gap-2">
-                  <button onClick={downloadFailedAsJson} className="px-2 py-1 bg-blue-600 text-white rounded text-sm">Download JSON</button>
-                  <button onClick={downloadFailedAsCsv} className="px-2 py-1 bg-blue-600 text-white rounded text-sm">Download CSV</button>
+                  <button onClick={downloadFailedAsJson} className={`px-2 py-1 ${THEME.primary.bg} text-white rounded text-sm`}>Download JSON</button>
+                  <button onClick={downloadFailedAsCsv} className={`px-2 py-1 ${THEME.primary.bg} text-white rounded text-sm`}>Download CSV</button>
                 </div>
               </div>
               <div className="text-sm text-gray-700 max-h-48 overflow-auto">

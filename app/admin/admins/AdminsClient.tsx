@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2, UserPlus, Trash2 } from 'lucide-react';
 import MainLayout from '@/components/MainLayout';
 import useUserAccess from '@/lib/useUserAccess';
+import { THEME, alertClasses } from '@/lib/theme';
+import { publish } from '@/lib/sync';
 
 interface AdminRow {
   AdministratorID: number;
@@ -77,7 +79,8 @@ export default function AdminsClient() {
       setNewEmail('');
       setNewDesc('');
       setMessage('Admin added');
-      fetchAdmins();
+      await fetchAdmins();
+      try { publish('admins-updated'); } catch(e) {}
     } catch (err) {
       console.error(err);
       setMessage('Failed to add admin');
@@ -101,7 +104,8 @@ export default function AdminsClient() {
         return;
       }
       setMessage('Admin removed');
-      fetchAdmins();
+      await fetchAdmins();
+      try { publish('admins-updated'); } catch(e) {}
     } catch (err) {
       console.error(err);
       setMessage('Failed to remove admin');
@@ -113,7 +117,7 @@ export default function AdminsClient() {
     return (
       <MainLayout userEmail={accessEmail} userRole="admin" userAccess={access} auth={auth || ''}>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-red-600" />
+          <Loader2 className={`w-8 h-8 animate-spin ${THEME.primary.text}`} />
         </div>
       </MainLayout>
     );
@@ -140,7 +144,7 @@ export default function AdminsClient() {
         </div>
 
         {message && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-900">{message}</div>
+          <div className={`p-4 border rounded-lg ${message.includes('removed') || message.includes('Failed') ? alertClasses.error : alertClasses.success}`}>{message}</div>
         )}
 
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
@@ -149,9 +153,9 @@ export default function AdminsClient() {
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               placeholder="admin@example.com"
-              className="col-span-2 px-4 py-2 border border-gray-200 rounded-lg"
+              className="col-span-2 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-            <button onClick={handleAdd} className="px-4 py-2 bg-red-600 text-white rounded-lg flex items-center gap-2">
+            <button onClick={handleAdd} className={`px-4 py-2 ${THEME.primary.bg} ${THEME.primary.bgHover} text-white rounded-lg flex items-center gap-2`}>
               <UserPlus className="w-4 h-4" /> Add
             </button>
           </div>
@@ -160,7 +164,7 @@ export default function AdminsClient() {
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
               placeholder="Optional description"
-              className="w-full mt-2 px-4 py-2 border border-gray-200 rounded-lg"
+              className="w-full mt-2 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
         </div>
@@ -176,8 +180,8 @@ export default function AdminsClient() {
                   <div className="text-sm text-gray-500">{a.Description || ''}</div>
                 </div>
                 <div>
-                  <button onClick={() => handleRemove(a.Username || '')} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 flex items-center gap-2">
-                    <Trash2 className="w-4 h-4 text-red-600" /> Remove
+                  <button onClick={() => handleRemove(a.Username || '')} className={`px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 flex items-center gap-2`}>
+                    <Trash2 className={`w-4 h-4 ${THEME.error.text}`} /> Remove
                   </button>
                 </div>
               </div>
